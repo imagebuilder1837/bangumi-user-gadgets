@@ -1,0 +1,17 @@
+{
+  "name": "bangumi-user-gadgets",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "format": "prettier --write .",
+    "test": "node --test",
+    "check": "node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^20.0.3",
+    "prettier": "3.6.2",
+    "rollup": "4.60.0"
+  }
+}

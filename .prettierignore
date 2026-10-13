@@ -1,0 +1,4 @@
+node_modules/
+src/index.user.js
+package-lock.json
+test/fixtures/

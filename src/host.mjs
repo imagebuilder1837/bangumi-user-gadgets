@@ -1,0 +1,250 @@
+const userPath =
+  /^\/user\/([^/]+)(?:\/(blog|index|friends|rev_friends|timeline|mono|groups|wiki)(?:\/[^/]+)*)?\/?$/;
+const collectionPath =
+  /^\/(anime|book|music|game|real)\/list\/([^/]+)(?:\/(wish|collect|do|on_hold|dropped))?\/?$/;
+
+export function inspectHost(window, takeover = false) {
+  const { document: d, location: l } = window;
+  if (
+    l.protocol !== "https:" ||
+    !["bgm.tv", "bangumi.tv", "chii.in"].includes(l.hostname)
+  )
+    return null;
+  const u = userPath.exec(l.pathname),
+    c = collectionPath.exec(l.pathname);
+  if (!u && !c) return null;
+  const profile = d.querySelector("#headerProfile"),
+    nav = profile?.querySelector(".navTabs");
+  if (!nav) return null;
+  const fail = (reason) => ({ nav, profile, reason });
+  let user;
+  try {
+    user = decodeURIComponent(u?.[1] || c[2]);
+  } catch {
+    return fail("页面中的用户标识无法解码。");
+  }
+  if (!/^[\p{L}\p{N}_-]+$/u.test(user))
+    return fail("页面中的用户标识格式无效。");
+  const links = [...nav.querySelectorAll(":scope > li > a[href]")];
+  const blogs = links.filter((a) => {
+    const url = new URL(a.href);
+    return (
+      url.origin === l.origin && /^\/user\/[^/]+\/blog\/?$/.test(url.pathname)
+    );
+  });
+  if (!blogs.length) return fail("个人导航中未找到目标用户的日志链接。");
+  try {
+    if (
+      blogs.some(
+        (a) =>
+          decodeURIComponent(new URL(a.href).pathname.split("/")[2]) !== user,
+      )
+    )
+      return fail("个人导航中的日志链接与页面目标用户身份冲突。");
+  } catch {
+    return fail("日志链接用户标识无法解码。");
+  }
+  const group = links.find((a) => {
+    const url = new URL(a.href);
+    try {
+      return (
+        a.textContent.trim() === "小组" &&
+        url.origin === l.origin &&
+        decodeURIComponent(url.pathname).replace(/\/$/, "") ===
+          `/user/${user}/groups`
+      );
+    } catch {
+      return false;
+    }
+  });
+  if (!group) return null;
+  const name = profile.querySelector("h1 .name");
+  const nickname =
+    [...(name?.querySelectorAll(":scope > a[href]") || [])]
+      .find((a) => {
+        try {
+          return (
+            new URL(a.href).origin === l.origin &&
+            decodeURIComponent(new URL(a.href).pathname).replace(/\/$/, "") ===
+              `/user/${user}`
+          );
+        } catch {
+          return false;
+        }
+      })
+      ?.textContent.trim() ||
+    [...(name?.childNodes || [])]
+      .filter((n) => n.nodeType === 3)
+      .map((n) => n.textContent)
+      .join("")
+      .trim() ||
+    user;
+  const base = { user, nickname, nav, profile, group };
+  if (!takeover) return base;
+  const scope = profile.closest("#wrapperNeue") || profile.parentElement;
+  const mains = [...scope.querySelectorAll(".mainWrapper")].filter(
+    (m) =>
+      !m.contains(profile) &&
+      !profile.contains(m) &&
+      profile.compareDocumentPosition(m) &
+        window.Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  const boundaries = mains.flatMap((main) =>
+    [...main.querySelectorAll(":scope > #footer")].map((footer) => ({
+      main,
+      footer,
+    })),
+  );
+  if (boundaries.length !== 1)
+    return fail("未找到唯一可靠的正文 footer 挂载边界。");
+  const { main, footer } = boundaries[0];
+  const content = [...main.children].slice(
+    0,
+    [...main.children].indexOf(footer),
+  );
+  if (
+    !content.some(
+      (node) =>
+        !["SCRIPT", "STYLE", "LINK", "TEMPLATE"].includes(node.tagName) &&
+        !node.hasAttribute("data-user-gadgets-view") &&
+        !node.hasAttribute("data-user-topics-view"),
+    )
+  )
+    return fail("未找到 footer 前可靠的原始正文。");
+  const sub = [...profile.querySelectorAll(".navSubTabsWrapper")].find(
+    (n) =>
+      n.querySelector(":scope > .navSubTabs") &&
+      !n.contains(nav) &&
+      !nav.contains(n) &&
+      ![...n.attributes].some((a) => a.name.startsWith("data-user-topics-")),
+  );
+  return { ...base, ...boundaries[0], sub };
+}
+
+// Attribute observers relinquish ownership, never repair active host structure.
+function ownAttribute(w, node, name, value) {
+  const old = node.getAttribute(name);
+  node.setAttribute(name, value);
+  let owned = true;
+  const observer = new w.MutationObserver(() => {
+    owned = false;
+  });
+  observer.observe(node, { attributes: true, attributeFilter: [name] });
+  return () => {
+    if (observer.takeRecords().length) owned = false;
+    observer.disconnect();
+    if (!owned || !node.isConnected || node.getAttribute(name) !== value)
+      return;
+    if (old === null) node.removeAttribute(name);
+    else node.setAttribute(name, old);
+  };
+}
+
+function ownFocus(w, node, enabled, canRestore = () => true) {
+  const previous = node.classList.contains("focus");
+  node.classList.toggle("focus", enabled);
+  let owned = true;
+  const containsFocus = (value) => (value || "").split(/\s+/).includes("focus");
+  const observeChanges = (records) => {
+    for (let i = 0; i < records.length; i++) {
+      const before = containsFocus(records[i].oldValue);
+      const after = containsFocus(
+        i + 1 < records.length
+          ? records[i + 1].oldValue
+          : node.getAttribute("class"),
+      );
+      if (before !== after) owned = false;
+    }
+  };
+  const observer = new w.MutationObserver(observeChanges);
+  observer.observe(node, {
+    attributes: true,
+    attributeFilter: ["class"],
+    attributeOldValue: true,
+  });
+  return () => {
+    observeChanges(observer.takeRecords());
+    observer.disconnect();
+    if (
+      owned &&
+      node.isConnected &&
+      node.classList.contains("focus") === enabled &&
+      canRestore()
+    )
+      node.classList.toggle("focus", previous);
+  };
+}
+
+export function mountHost(w, host, link) {
+  const d = w.document;
+  const root = d.createElement("section");
+  root.dataset.userGadgetsView = "";
+  root.tabIndex = -1;
+  const style = d.createElement("style");
+  style.dataset.userGadgetsStyle = "";
+  style.textContent = `[data-user-gadgets-hidden="on"] { display:none!important; }
+[data-user-gadgets-view] { width:100%;max-width:1000px;margin:0 auto;padding:10px 0;box-sizing:border-box;min-height:200px; }
+[data-user-gadgets-view] .ug-shell { display:flex;gap:15px; }
+[data-user-gadgets-view] .ug-list { width:700px;min-width:0; }
+[data-user-gadgets-view] .ug-tools { width:280px;flex-shrink:0; }
+[data-user-gadgets-view] .gadgetList { margin:0;padding:0;list-style:none; }
+[data-user-gadgets-view] .gadgetList li { display:flex;padding:5px 0;border-bottom:1px solid rgba(128,128,128,.2);gap:18px; }
+[data-user-gadgets-view] .gadgetList .avatar img { width:40px;height:40px;border-radius:5px; }
+[data-user-gadgets-view] .gadgetList .info { flex:1;min-width:0; }
+[data-user-gadgets-view] .desc { white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0; }
+[data-user-gadgets-view] .item-tags { display:flex;flex-wrap:wrap;gap:3px; }
+[data-user-gadgets-view] .badge_tag { padding:2px 5px;background:rgba(128,128,128,.12);border-radius:3px;color:inherit; }
+@media(max-width:640px) { [data-user-gadgets-view] .ug-shell { flex-direction:column; } [data-user-gadgets-view] .ug-list,[data-user-gadgets-view] .ug-tools { width:100%; } [data-user-gadgets-view] .ug-tools { order:-1; } }`;
+  const children = [...host.main.children].slice(
+    0,
+    [...host.main.children].indexOf(host.footer),
+  );
+  const previousFocus = children.some((n) => n.contains(d.activeElement))
+    ? d.activeElement
+    : null;
+  const scroll = w.scrollY;
+  const releases = [...children, ...(host.sub ? [host.sub] : [])].map((n) =>
+    ownAttribute(w, n, "data-user-gadgets-hidden", "on"),
+  );
+  const focused = [...host.nav.querySelectorAll(":scope > li > a.focus")];
+  // Own only the focus token; unrelated classes must survive restoration.
+  const restoreNav = focused.map((n) =>
+    ownFocus(w, n, false, () => !host.nav.querySelector("a.focus")),
+  );
+  const releaseLink = ownFocus(w, link, true);
+  const title = d.title,
+    ownedTitle = `${host.nickname} 的组件`;
+  d.title = ownedTitle;
+  let titleOwned = true;
+  const titleObserver = new w.MutationObserver(() => {
+    titleOwned = false;
+  });
+  titleObserver.observe(d.querySelector("title"), {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+  d.head.append(style);
+  host.footer.before(root);
+  if (previousFocus) root.focus({ preventScroll: true });
+  return {
+    root,
+    hide() {
+      const active = d.activeElement;
+      const restoreFocus =
+        active === d.body || root.contains(active) || active === link;
+      root.remove();
+      style.remove();
+      releases.forEach((release) => release());
+      releaseLink();
+      restoreNav.forEach((release) => release());
+      if (titleObserver.takeRecords().length) titleOwned = false;
+      titleObserver.disconnect();
+      if (titleOwned && d.title === ownedTitle) d.title = title;
+      if (restoreFocus && previousFocus?.isConnected)
+        previousFocus.focus({ preventScroll: true });
+      const native = w.location.hash.slice(1);
+      if (!native || !d.getElementById(native)) w.scrollTo?.(0, scroll);
+    },
+  };
+}
