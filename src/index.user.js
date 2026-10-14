@@ -230,7 +230,7 @@
 [data-user-gadgets-view] .ug-sort-directions { margin-left:auto; }
 [data-user-gadgets-view] .ug-sort button.l { appearance:none;border:0;background:none;color:#0084b4;font:inherit;cursor:pointer;border-radius:15px;padding:2px 8px; }
 html[data-theme=dark] [data-user-gadgets-view] .ug-sort button.l { color:#2ea6ff; }
-[data-user-gadgets-view] .ug-sort button[aria-pressed=true],[data-user-gadgets-view] .ug-sort button:hover,[data-user-gadgets-view] .ug-sort button:focus-visible { background:var(--primary-color,#f09199);color:#fff; }
+[data-user-gadgets-view] .ug-sort button:hover,[data-user-gadgets-view] .ug-sort button:focus-visible { background:var(--primary-color,#f09199);color:#fff; }
 [data-user-gadgets-view] .ug-sort button:focus-visible { outline:2px solid currentColor;outline-offset:2px; }
 [data-user-gadgets-view] .gadgetList { box-sizing:border-box;margin:0;padding:0;list-style:none; }
 [data-user-gadgets-view] .gadgetList > li { box-sizing:border-box;margin:5px 0;padding:5px 0;position:relative;word-wrap:break-word; }
@@ -400,6 +400,13 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
         authorHref: authorLinks[0].url.href,
         icon: safeURL(icon?.getAttribute("src"), origin)?.href || null,
         description: description(li.querySelector("p.desc"), origin),
+        warnings: [
+          ...li.querySelectorAll(":scope > .info > p > span.alarm"),
+        ].map((node) =>
+          description(node, origin)
+            .map((part) => part.text)
+            .join(""),
+        ),
         tags: (li.querySelector(".tags")?.textContent.trim() || "")
           .split(/\s+/)
           .filter(Boolean),
@@ -558,7 +565,7 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
     const bar = el("div", "browserTools clearit ug-sort"),
       metrics = el("div", "filters ug-sort-metrics"),
       directions = el("div", "filters ug-sort-directions"),
-      ul = el("ul", "gadgetList list_all"),
+      ul = el("ul", "gadgetList list_all text"),
       nodes = new Map(),
       metricButtons = new Map(),
       directionButtons = new Map();
@@ -671,6 +678,11 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
               : document.createTextNode(part.text),
         );
       info.append(desc);
+      for (const warning of item.warnings) {
+        const p = el("p");
+        p.append(el("span", "alarm", warning));
+        info.append(p);
+      }
       const tags = el("div", "item-tags");
       item.tags.forEach((tag) => tags.append(el("span", "badge_tag", tag)));
       info.append(tags);

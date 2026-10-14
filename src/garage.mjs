@@ -103,6 +103,12 @@ function parseGarage(window, html, origin) {
       authorHref: authorLinks[0].url.href,
       icon: safeURL(icon?.getAttribute("src"), origin)?.href || null,
       description: description(li.querySelector("p.desc"), origin),
+      warnings: [...li.querySelectorAll(":scope > .info > p > span.alarm")].map(
+        (node) =>
+          description(node, origin)
+            .map((part) => part.text)
+            .join(""),
+      ),
       tags: (li.querySelector(".tags")?.textContent.trim() || "")
         .split(/\s+/)
         .filter(Boolean),

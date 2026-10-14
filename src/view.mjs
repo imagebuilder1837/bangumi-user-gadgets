@@ -36,7 +36,7 @@ export function renderView(document, root, state, retry, now, changeSort) {
   const bar = el("div", "browserTools clearit ug-sort"),
     metrics = el("div", "filters ug-sort-metrics"),
     directions = el("div", "filters ug-sort-directions"),
-    ul = el("ul", "gadgetList list_all"),
+    ul = el("ul", "gadgetList list_all text"),
     nodes = new Map(),
     metricButtons = new Map(),
     directionButtons = new Map();
@@ -146,6 +146,11 @@ export function renderView(document, root, state, retry, now, changeSort) {
             : document.createTextNode(part.text),
       );
     info.append(desc);
+    for (const warning of item.warnings) {
+      const p = el("p");
+      p.append(el("span", "alarm", warning));
+      info.append(p);
+    }
     const tags = el("div", "item-tags");
     item.tags.forEach((tag) => tags.append(el("span", "badge_tag", tag)));
     info.append(tags);
