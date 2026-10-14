@@ -48,7 +48,9 @@
 - `a.chiiBtn` 等规则带元素类型约束，给 button 同名 class 不保证等价；嵌套灰字链接还可能被更具体的字号／颜色规则覆盖。
 - 保存页的搜索框 `.searchBar .inner`／`input.textfield`、分类胶囊 `.tag-checkbox`／`.selected`／`.tag-count` 和卡片 `.badge_tag.highlighted` 有可复用的全局规则，但不是完整侧栏样式。面板底色、边框、15px 圆角、标题条和输入留白依赖 `#columnSubjectBrowserB .sideInner`；缺少该祖先时只有胶囊和裸标题。需在自有根内桥接这些规则，并保留 `.search > .searchBar > .inner` 包装层；不能靠复制宿主 ID 修复。
 - 主子层级与关联区布局来自页面内联 CSS，需在自有根内补齐；不要复制内联分类标题的固定深色文字。搜索面板间距沿用原生 `.sideInner` 的 10px 下边距，不另加 15px 覆盖。
-- 原站 `.tag-checkbox input[type=checkbox/radio]` 使用 `display:none`，直接复用会丢失键盘焦点；本组件在自有根内改用视觉裁剪，并补焦点轮廓。禁用标签还须覆盖原生 hover，固定频数不能作为可用性样式。
+- 原站 `.tag-checkbox input[type=checkbox/radio]` 使用 `display:none`，直接复用会丢失键盘焦点；本组件在自有根内改用视觉裁剪，以 `.tag-checkbox:has(input:focus-visible)` 将键盘焦点轮廓画在完整胶囊上，不能用 `:focus-within` 让鼠标点击也留下外圈。此适配依赖浏览器支持 `:has`，真实键盘／鼠标效果仍须人工验证。禁用标签还须覆盖原生 hover，固定频数不能作为可用性样式。
+- 保存的 bgm.tv 格纳库脚本 `showRelatedTags` 将关联区插入所属 `.main-category` 的子分类之后；虽然内联 CSS 定义了 `.related-tags-title`，实际脚本没有创建标题，不能仅据 selector 存在补可见标题。用户提供的原站与组件截图确认了关联区位置／标题及卡片父分类高亮的差异；截图未提供 origin 或登录态。
+- 原站重置采用 `a.l.rr > small`；`a.l` 的蓝色、浅深主题与 hover 下划线规则限定于锚点。语义 button 可复用 `l`、`rr` 和 `small` 结构，但仍需自有根内的最小链接外观适配及键盘焦点，不以换类名冒充样式等价。
 - 保存的格纳库脚本对标题／简介创建 `<mark>`，对搜索命中的标签只添加 `.highlighted`；配套 CSS 没有 `mark` 配色规则，使用浏览器原生亮黄底黑字，标签则复用全局蓝底白字。不要对标签插入 `<mark>`，也不要自行用浅橙／暗黄覆盖原生搜索标记。原站暗色通过 `html[data-theme=dark]` 等规则覆盖，但没有单独更改 `mark`。以上为保存页及配套 CSS／脚本的静态核对，不代表真实浏览器的视觉、Tab／方向键或输入法验收。
 - 含 display:flex 的作者样式可能压过 hidden 属性。非 mainXL 宿主页还可能保留祖先 1000px 最小宽度，仅改变自有根不足以获得相同响应式效果。
 - CSS 片段脱离 media 层级会误导级联判断，jsdom 不能验证宽度、布局和实际焦点。侧栏回归样本需保留原生祖先 ID 规则和对应 DOM，再与自有根比较；只裁剪全局类会漏掉本次裸面板问题。仅因静态 selector 存在不能宣称视觉一致。

@@ -11,6 +11,13 @@ import {
 } from "./support/fixtures.mjs";
 import { JSDOM } from "jsdom";
 import { startApp } from "../src/entry.mjs";
+import {
+  viewRoot as root,
+  visibleItems as visible,
+  filterOption as option,
+  searchInput as search,
+  setSearchValue,
+} from "./support/interactions.mjs";
 
 const tagged = (id, tags, title = `组件${id}`, desc = "简介") =>
   card(id)
@@ -40,21 +47,9 @@ const html = () =>
     '"subCategories":["评分与统计"]}]',
     '"subCategories":["评分与统计","空子类"]},{"name":"界面优化","subCategories":["美化"]},{"name":"空主类","subCategories":[]}]',
   );
-const root = (d) => d.querySelector("[data-user-gadgets-view]");
-const visible = (d) =>
-  [...root(d).querySelectorAll("[data-user-gadgets-item]")]
-    .filter((n) => !n.hidden)
-    .map((n) => n.dataset.userGadgetsItem);
-const option = (d, text, type = "radio") =>
-  [...root(d).querySelectorAll(`input[type=${type}]`)].find(
-    (n) =>
-      n.closest("label").querySelector(".ug-option-name").textContent === text,
-  );
 const count = (n) => n.closest("label").querySelector(".tag-count").textContent;
-const search = (d) => root(d).querySelector('input[aria-label="搜索组件"]');
 const enter = (w, d, value) => {
-  const n = search(d);
-  n.value = value;
+  const n = setSearchValue(d, value);
   n.dispatchEvent(new w.Event("input"));
   n.dispatchEvent(
     new w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
@@ -117,6 +112,39 @@ test("搜索跨字段 AND、字面词与安全重叠高亮，保留节点和链�
   assert.deepEqual(visible(d), ["1", "2"]);
   assert.equal(item.querySelectorAll("mark").length, 0);
   assert.equal(root(d).querySelector('[data-user-gadgets-item="1"]'), item);
+});
+
+test("子分类点亮卡片分类路径但不选中父分类；父分类点击切换范围", async (t) => {
+  const { d, w } = await open(t);
+  const badges = root(d).querySelector(
+    '[data-user-gadgets-item="1"] .item-tags',
+  ).children;
+  option(d, "评分与统计").click();
+  assert.deepEqual(visible(d), ["1", "6"]);
+  assert.equal(badges[0].classList.contains("highlighted"), true);
+  assert.equal(badges[1].classList.contains("highlighted"), true);
+  assert.equal(badges[0].getAttribute("aria-pressed"), "false");
+  assert.equal(badges[1].getAttribute("aria-pressed"), "true");
+  assert.equal(option(d, "功能增强").checked, false);
+  assert.equal(
+    option(d, "功能增强").closest("label").classList.contains("selected"),
+    false,
+  );
+  enter(w, d, "功能增强");
+  search(d).dispatchEvent(
+    new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+  );
+  assert.equal(badges[0].classList.contains("highlighted"), true);
+  badges[0].click();
+  assert.equal(option(d, "功能增强").checked, true);
+  assert.deepEqual(visible(d), ["1", "2", "6"]);
+  badges[1].click();
+  assert.equal(option(d, "评分与统计").checked, true);
+  badges[1].click();
+  assert.equal(option(d, "评分与统计").checked, false);
+  assert.equal(badges[0].classList.contains("highlighted"), false);
+  assert.equal(badges[1].classList.contains("highlighted"), false);
+  assert.deepEqual(visible(d), ["1", "2", "3", "4", "5", "6"]);
 });
 
 test("卡片标签按角色定位、替换与取消；重置和重入保留搜索排序", async (t) => {
@@ -197,6 +225,40 @@ test("卡片标签按角色定位、替换与取消；重置和重入保留搜�
   assert.equal(option(d, "未知", "checkbox").checked, true);
   option(d, "未分类").click();
   assert.deepEqual(visible(d), ["1", "2", "3", "4", "5", "6"]);
+});
+
+test("关联标签紧跟所属分类的子分类、无标题，空集合与重置不留分隔线", async (t) => {
+  const { d } = await open(t);
+  option(d, "评分与统计").click();
+  let related = root(d).querySelector(".related-tags-container");
+  const mainGroup = option(d, "功能增强").closest(".main-category");
+  assert.equal(related.parentElement, mainGroup);
+  assert.equal(
+    related.previousElementSibling,
+    mainGroup.querySelector(".sub-categories"),
+  );
+  assert.equal(related.querySelector("h3"), null);
+  assert.equal(related.getAttribute("aria-label"), "关联标签");
+  option(d, "界面优化").click();
+  assert.equal(
+    related.parentElement,
+    option(d, "界面优化").closest(".main-category"),
+  );
+  option(d, "未分类").click();
+  assert.equal(
+    related.parentElement,
+    option(d, "未分类").closest(".main-category"),
+  );
+  root(d).querySelector(".ug-reset").click();
+  assert.equal(related.hidden, true);
+  const empty = await open(t, garage(tagged("1", "功能增强 评分与统计")));
+  option(empty.d, "评分与统计").click();
+  related = root(empty.d).querySelector(".related-tags-container");
+  assert.equal(related.hidden, true);
+  assert.equal(
+    root(empty.d).querySelectorAll("input[type=checkbox]").length,
+    0,
+  );
 });
 
 test("防抖、IME 取消旧提交、Enter/Escape 与退出清理不竞争", async (t) => {

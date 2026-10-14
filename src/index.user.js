@@ -241,13 +241,15 @@ html[data-theme=dark] [data-user-gadgets-view] .ug-tools .searchBar { background
 [data-user-gadgets-view] .sub-categories { margin:0 5px; }
 [data-user-gadgets-view] .related-tags-container { margin:5px 0 0 5px;padding-left:5px;border-left:2px solid #e0e0e0; }
 html[data-theme=dark] [data-user-gadgets-view] .related-tags-container { border-color:#444; }
-[data-user-gadgets-view] .related-tags-title { margin-bottom:5px;font-size:12px; }
 [data-user-gadgets-view] .tag-checkbox { position:relative; }
 [data-user-gadgets-view] .tag-checkbox input[type=radio],[data-user-gadgets-view] .tag-checkbox input[type=checkbox] { display:block;position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%); }
-[data-user-gadgets-view] .tag-checkbox:focus-within,[data-user-gadgets-view] .badge_tag:focus-visible { outline:2px solid var(--primary-color,#f09199);outline-offset:2px; }
+[data-user-gadgets-view] .tag-checkbox:has(input:focus-visible),[data-user-gadgets-view] .badge_tag:focus-visible { outline:2px solid var(--primary-color,#f09199);outline-offset:2px; }
 [data-user-gadgets-view] .tag-checkbox.ug-disabled { opacity:.45;cursor:not-allowed;background:none;color:inherit; }
 [data-user-gadgets-view] .ug-disabled .tag-count { color:inherit; }
-[data-user-gadgets-view] .ug-reset { border:0;background:none;color:inherit;font:inherit;cursor:pointer; }
+[data-user-gadgets-view] .ug-reset { appearance:none;border:0;background:none;color:#0084b4;font:inherit;padding:0;cursor:pointer;text-decoration:none; }
+html[data-theme=dark] [data-user-gadgets-view] .ug-reset { color:#2ea6ff; }
+[data-user-gadgets-view] .ug-reset:hover,html[data-theme=dark] [data-user-gadgets-view] .ug-reset:hover { color:#02a3fb;text-decoration:underline; }
+[data-user-gadgets-view] .ug-reset:focus-visible { outline:2px solid currentColor;outline-offset:2px; }
 [data-user-gadgets-view] .ug-sort { display:flex;flex-wrap:wrap;align-items:baseline;gap:4px; }
 [data-user-gadgets-view] .ug-sort .filters { display:flex;flex-wrap:wrap;align-items:baseline;gap:2px; }
 [data-user-gadgets-view] .ug-sort-directions { margin-left:auto; }
@@ -477,32 +479,44 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
     return { items: [...items.values()], categories };
   }
 
+  // Share only the deadline mechanism, not read/action recovery policies.
+  async function withTimeout({ window, timers }, operation, message) {
+    const controller = new window.AbortController();
+    let timeout;
+    try {
+      return await Promise.race([
+        operation(controller.signal),
+        new Promise((_, reject) => {
+          timeout = timers.setTimeout(() => {
+            controller.abort();
+            reject(new Error(message));
+          }, 15000);
+        }),
+      ]);
+    } finally {
+      timers.clearTimeout(timeout);
+    }
+  }
+
   // Action requests deliberately do not share the read retry policy.
   async function toggleGadget({ window, fetch, timers }, href) {
     const url = new URL(href);
     url.searchParams.set("ajax", "1");
-    const controller = new window.AbortController();
-    let timeout;
     try {
-      const response = await Promise.race([
-        fetch(url.href, {
-          method: "GET",
-          credentials: "same-origin",
-          headers: { "X-Requested-With": "XMLHttpRequest" },
-          signal: controller.signal,
-        }),
-        new Promise((_, reject) => {
-          timeout = timers.setTimeout(() => {
-            controller.abort();
-            reject(new Error("动作超时。"));
-          }, 15000);
-        }),
-      ]);
+      const response = await withTimeout(
+        { window, timers },
+        (signal) =>
+          fetch(url.href, {
+            method: "GET",
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            signal,
+          }),
+        "动作超时。",
+      );
       return response.ok;
     } catch {
       return false;
-    } finally {
-      timers.clearTimeout(timeout);
     }
   }
 
@@ -510,30 +524,22 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
     const wait = (ms) =>
       new Promise((resolve) => timers.setTimeout(resolve, ms));
     for (let attempt = 0; attempt < 3; attempt++) {
-      const controller = new window.AbortController();
-      let timeout;
       let response, html;
       try {
-        const result = await Promise.race([
-          (async () => {
+        const result = await withTimeout(
+          { window, timers },
+          async (signal) => {
             const r = await fetch(`${origin}/dev/garage`, {
               credentials: "same-origin",
-              signal: controller.signal,
+              signal,
             });
             return { response: r, html: r.ok ? await r.text() : "" };
-          })(),
-          new Promise((_, reject) => {
-            timeout = timers.setTimeout(() => {
-              controller.abort();
-              reject(new Error("读取超时。"));
-            }, 15000);
-          }),
-        ]);
+          },
+          "读取超时。",
+        );
         ({ response, html } = result);
       } catch (error) {
         if (attempt === 2) throw new Error(`读取组件失败：${error.message}`);
-      } finally {
-        timers.clearTimeout(timeout);
       }
       if (response?.status === 429) {
         const retry = response.headers.get("Retry-After");
@@ -702,6 +708,16 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
           : filters.tags.includes(item.tags[index]))
       );
     }
+    function tagHighlighted(filters, item, index) {
+      const role = roles.get(item.id);
+      return (
+        tagSelected(filters, item, index) ||
+        (!!configuration &&
+          index === 0 &&
+          !!role.sub &&
+          filters.category === role.sub)
+      );
+    }
     return {
       categories,
       matches,
@@ -710,6 +726,7 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       selectTag,
       cardTag,
       tagSelected,
+      tagHighlighted,
     };
   }
 
@@ -1038,7 +1055,11 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
           );
           const searchHit =
             searchRanges(item.tags[index], state.filters.query).length > 0;
-          tag.classList.toggle("highlighted", selected || searchHit);
+          tag.classList.toggle(
+            "highlighted",
+            state.catalog.tagHighlighted(state.filters, item, index) ||
+              searchHit,
+          );
           if (state.categories)
             tag.setAttribute("aria-pressed", String(selected));
         });
@@ -1128,7 +1149,9 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       groups = new Map(),
       related = el("div", "related-tags-container"),
       relatedTags = el("div", "related-tags-wrapper");
-    related.append(el("h3", "related-tags-title", "关联标签"), relatedTags);
+    related.setAttribute("role", "group");
+    related.setAttribute("aria-label", "关联标签");
+    related.append(relatedTags);
     function option(container, name, count, type, select) {
       const label = el("label", "tag-checkbox"),
         control = el("input");
@@ -1174,8 +1197,14 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
         control.checked = filters.category === key;
         control.parentElement.classList.toggle("selected", control.checked);
       }
-      related.hidden = filters.category === null;
+      const category = catalog.categories.find(
+        (c) => c.key === filters.category,
+      );
+      const group =
+        category && groups.get(category.parent || category.key).parentElement;
+      if (group && related.parentElement !== group) group.append(related);
       const options = catalog.related(filters);
+      related.hidden = options.length === 0;
       if (
         JSON.stringify([...relatedInputs.keys()]) !==
         JSON.stringify(options.map((o) => o.tag))
@@ -1417,7 +1446,8 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
     // Exit synchronously before other virtual pages mount; enter in the next task.
     window.addEventListener("hashchange", route, true);
     const initial = inspectHost(window);
-    ensureEntry(initial);
+    if (initial?.reason) fail(initial);
+    else ensureEntry(initial);
     if (window.location.hash === "#gadgets") schedule();
     const app = {
       stop() {

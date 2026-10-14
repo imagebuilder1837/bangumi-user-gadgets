@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { readFile } from "node:fs/promises";
 import { startApp } from "../src/entry.mjs";
-import { readGarage } from "../src/garage.mjs";
+import { readGarage, toggleGadget } from "../src/garage.mjs";
 import {
   host,
   card,
@@ -189,6 +189,103 @@ test("一致重复 ID 保留首次，缺排序字段与坏分类不丢卡片", a
   app.stop();
   w.close();
 });
+
+test("读取正文也受 15 秒超时限制，旧正文迟到不覆盖新尝试", async (t) => {
+  const dom = new JSDOM("");
+  t.after(() => dom.window.close());
+  const time = fakeTime(),
+    signals = [];
+  let finishOldBody;
+  const task = readGarage(
+    {
+      window: dom.window,
+      timers: time,
+      now: time.now,
+      fetch: async (_, { signal }) => {
+        signals.push(signal);
+        return signals.length === 1
+          ? {
+              ok: true,
+              text: () =>
+                new Promise((resolve) => {
+                  finishOldBody = resolve;
+                }),
+            }
+          : new Response(garage(card("32")));
+      },
+    },
+    "https://bgm.tv",
+  );
+  await time.advance(0);
+  await time.advance(14999);
+  assert.equal(signals[0].aborted, false);
+  await time.advance(1);
+  assert.equal(signals[0].aborted, true);
+  await time.advance(1000);
+  const result = await task;
+  assert.deepEqual(
+    result.items.map((item) => item.id),
+    ["32"],
+  );
+  finishOldBody(garage(card("31")));
+  await time.advance(15000);
+  assert.equal(signals.length, 2);
+  assert.equal(signals[1].aborted, false);
+  assert.deepEqual(
+    result.items.map((item) => item.id),
+    ["32"],
+  );
+});
+
+for (const kind of ["read", "action"])
+  for (const outcome of ["success", "failure"])
+    test(`${kind} ${outcome} 及时清除超时定时器`, async (t) => {
+      const dom = new JSDOM("");
+      t.after(() => dom.window.close());
+      const time = fakeTime(),
+        active = new Set();
+      const timers = {
+        setTimeout(fn, ms) {
+          const id = time.setTimeout(fn, ms);
+          active.add(id);
+          return id;
+        },
+        clearTimeout(id) {
+          active.delete(id);
+          time.clearTimeout(id);
+        },
+      };
+      let signal;
+      const context = {
+        window: dom.window,
+        timers,
+        now: time.now,
+        fetch: async (_, options) => {
+          signal = options.signal;
+          if (kind === "action" && outcome === "failure")
+            throw new Error("offline");
+          return outcome === "success"
+            ? new Response(garage())
+            : new Response("", { status: 403 });
+        },
+      };
+      if (kind === "read") {
+        const task = readGarage(context, "https://bgm.tv");
+        if (outcome === "failure") await assert.rejects(task, /403/);
+        else assert.equal((await task).items.length, 1);
+      } else {
+        assert.equal(
+          await toggleGadget(
+            context,
+            "https://bgm.tv/dev/app/31/enable?gh=REDACTED",
+          ),
+          outcome === "success",
+        );
+      }
+      assert.equal(active.size, 0);
+      await time.advance(15000);
+      assert.equal(signal.aborted, false);
+    });
 
 for (const failure of ["network", "timeout", 408, 500])
   test(`${failure} 在 1 秒、2 秒后有限重试`, async () => {

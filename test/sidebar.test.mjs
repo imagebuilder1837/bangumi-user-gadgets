@@ -113,6 +113,19 @@ for (const theme of ["light", "dark"])
       reference.window.getComputedStyle(expected.querySelector("h2 small"))
         .fontSize,
     );
+    const resetButton = reset.parentElement;
+    assert.equal(resetButton.tagName, "BUTTON");
+    assert.equal(resetButton.type, "button");
+    assert.equal(resetButton.classList.contains("l"), true);
+    assert.equal(resetButton.classList.contains("rr"), true);
+    for (const property of ["color", "borderTopWidth", "textDecoration"])
+      assert.equal(
+        dom.window.getComputedStyle(resetButton)[property],
+        reference.window.getComputedStyle(expected.querySelector("a.l"))[
+          property
+        ],
+        `重置 ${property}`,
+      );
     assert.equal(actual.querySelector("#columnSubjectBrowserB"), null);
     assert.equal(
       dom.window.document.querySelectorAll("[id]").length,

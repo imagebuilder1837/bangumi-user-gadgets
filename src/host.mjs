@@ -203,13 +203,15 @@ html[data-theme=dark] [data-user-gadgets-view] .ug-tools .searchBar { background
 [data-user-gadgets-view] .sub-categories { margin:0 5px; }
 [data-user-gadgets-view] .related-tags-container { margin:5px 0 0 5px;padding-left:5px;border-left:2px solid #e0e0e0; }
 html[data-theme=dark] [data-user-gadgets-view] .related-tags-container { border-color:#444; }
-[data-user-gadgets-view] .related-tags-title { margin-bottom:5px;font-size:12px; }
 [data-user-gadgets-view] .tag-checkbox { position:relative; }
 [data-user-gadgets-view] .tag-checkbox input[type=radio],[data-user-gadgets-view] .tag-checkbox input[type=checkbox] { display:block;position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%); }
-[data-user-gadgets-view] .tag-checkbox:focus-within,[data-user-gadgets-view] .badge_tag:focus-visible { outline:2px solid var(--primary-color,#f09199);outline-offset:2px; }
+[data-user-gadgets-view] .tag-checkbox:has(input:focus-visible),[data-user-gadgets-view] .badge_tag:focus-visible { outline:2px solid var(--primary-color,#f09199);outline-offset:2px; }
 [data-user-gadgets-view] .tag-checkbox.ug-disabled { opacity:.45;cursor:not-allowed;background:none;color:inherit; }
 [data-user-gadgets-view] .ug-disabled .tag-count { color:inherit; }
-[data-user-gadgets-view] .ug-reset { border:0;background:none;color:inherit;font:inherit;cursor:pointer; }
+[data-user-gadgets-view] .ug-reset { appearance:none;border:0;background:none;color:#0084b4;font:inherit;padding:0;cursor:pointer;text-decoration:none; }
+html[data-theme=dark] [data-user-gadgets-view] .ug-reset { color:#2ea6ff; }
+[data-user-gadgets-view] .ug-reset:hover,html[data-theme=dark] [data-user-gadgets-view] .ug-reset:hover { color:#02a3fb;text-decoration:underline; }
+[data-user-gadgets-view] .ug-reset:focus-visible { outline:2px solid currentColor;outline-offset:2px; }
 [data-user-gadgets-view] .ug-sort { display:flex;flex-wrap:wrap;align-items:baseline;gap:4px; }
 [data-user-gadgets-view] .ug-sort .filters { display:flex;flex-wrap:wrap;align-items:baseline;gap:2px; }
 [data-user-gadgets-view] .ug-sort-directions { margin-left:auto; }

@@ -223,7 +223,8 @@ export function startApp({
   // Exit synchronously before other virtual pages mount; enter in the next task.
   window.addEventListener("hashchange", route, true);
   const initial = inspectHost(window);
-  ensureEntry(initial);
+  if (initial?.reason) fail(initial);
+  else ensureEntry(initial);
   if (window.location.hash === "#gadgets") schedule();
   const app = {
     stop() {

@@ -138,6 +138,16 @@ export function createCatalog(items, configuration) {
         : filters.tags.includes(item.tags[index]))
     );
   }
+  function tagHighlighted(filters, item, index) {
+    const role = roles.get(item.id);
+    return (
+      tagSelected(filters, item, index) ||
+      (!!configuration &&
+        index === 0 &&
+        !!role.sub &&
+        filters.category === role.sub)
+    );
+  }
   return {
     categories,
     matches,
@@ -146,6 +156,7 @@ export function createCatalog(items, configuration) {
     selectTag,
     cardTag,
     tagSelected,
+    tagHighlighted,
   };
 }
 

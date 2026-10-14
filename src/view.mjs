@@ -298,7 +298,10 @@ export function renderView(
         const selected = state.catalog.tagSelected(state.filters, item, index);
         const searchHit =
           searchRanges(item.tags[index], state.filters.query).length > 0;
-        tag.classList.toggle("highlighted", selected || searchHit);
+        tag.classList.toggle(
+          "highlighted",
+          state.catalog.tagHighlighted(state.filters, item, index) || searchHit,
+        );
         if (state.categories)
           tag.setAttribute("aria-pressed", String(selected));
       });
@@ -388,7 +391,9 @@ function renderFilters(el, tools, state, timers, changed) {
     groups = new Map(),
     related = el("div", "related-tags-container"),
     relatedTags = el("div", "related-tags-wrapper");
-  related.append(el("h3", "related-tags-title", "关联标签"), relatedTags);
+  related.setAttribute("role", "group");
+  related.setAttribute("aria-label", "关联标签");
+  related.append(relatedTags);
   function option(container, name, count, type, select) {
     const label = el("label", "tag-checkbox"),
       control = el("input");
@@ -434,8 +439,12 @@ function renderFilters(el, tools, state, timers, changed) {
       control.checked = filters.category === key;
       control.parentElement.classList.toggle("selected", control.checked);
     }
-    related.hidden = filters.category === null;
+    const category = catalog.categories.find((c) => c.key === filters.category);
+    const group =
+      category && groups.get(category.parent || category.key).parentElement;
+    if (group && related.parentElement !== group) group.append(related);
     const options = catalog.related(filters);
+    related.hidden = options.length === 0;
     if (
       JSON.stringify([...relatedInputs.keys()]) !==
       JSON.stringify(options.map((o) => o.tag))

@@ -12,6 +12,10 @@ html[data-theme=dark] .tag-checkbox { border:1px solid #444; }
 .searchBar input.textfield { width:100%;padding:0 5px;background:transparent;line-height:20px;border:none; }
 .item-tags { display:flex;flex-wrap:wrap;gap:4px; }
 span.badge_tag.highlighted { background:#369cf8!important;color:#fff!important; }
+a.l,a.l:active,a.l:link,a.l:visited { color:#0084b4;border:0;text-decoration:none; }
+html[data-theme=dark] a.l,html[data-theme=dark] a.l:active,html[data-theme=dark] a.l:link,html[data-theme=dark] a.l:visited { color:#2ea6ff; }
+a.l:hover { color:#02a3fb;text-decoration:underline; }
+html[data-theme=dark] a.l:hover { color:#02a3fb; }
 h2 { margin:0;padding:0; }
 h2.subtitle { font-weight:300;font-size:18px;padding:0 5px 0 0;line-height:140%;color:#555; }
 html[data-theme=dark] h2.subtitle { color:#dedede; }

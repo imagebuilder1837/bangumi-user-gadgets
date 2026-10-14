@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { startApp } from "../src/entry.mjs";
-import { garage, settle, setup } from "./support/fixtures.mjs";
+import { JSDOM } from "jsdom";
+import { garage, host, settle, setup } from "./support/fixtures.mjs";
 
 test("缺 footer 时不读取，同 hash 可以重试挂载", async () => {
   let reads = 0;
@@ -99,6 +100,85 @@ for (const path of [
     w.close();
   });
 }
+
+for (const markup of [
+  host.replace('class="navTabs"', 'class="other-nav"'),
+  host.replace('<a href="/user/alice/groups">小组</a>', ""),
+])
+  test("普通页面未识别入口锚点时静默且不读取", async (t) => {
+    const dom = new JSDOM(markup, { url: "https://bgm.tv/user/alice" });
+    const d = dom.window.document;
+    const app = startApp({
+      window: dom.window,
+      fetch: () => assert.fail("不能读取"),
+    });
+    t.after(() => {
+      app.stop();
+      dom.window.close();
+    });
+    assert.equal(d.querySelector("[data-user-gadgets-link]"), null);
+    assert.equal(d.querySelector("[data-user-gadgets-error]"), null);
+  });
+
+test("普通初始化不提前检查正文 footer", (t) => {
+  const dom = new JSDOM(host.replace('<div id="footer">footer</div>', ""), {
+    url: "https://bgm.tv/user/alice",
+  });
+  const d = dom.window.document;
+  const app = startApp({
+    window: dom.window,
+    fetch: () => assert.fail("不能读取"),
+  });
+  t.after(() => {
+    app.stop();
+    dom.window.close();
+  });
+  assert.ok(d.querySelector("[data-user-gadgets-link]"));
+  assert.equal(d.querySelector("[data-user-gadgets-error]"), null);
+});
+
+for (const [path, markup, reason] of [
+  ["/user/other", host, /身份冲突/],
+  ["/user/%ZZ", host, /无法解码/],
+  ["/user/alice%21", host, /格式无效/],
+  [
+    "/user/alice",
+    host.replace('<a href="/user/alice/blog">日志</a>', ""),
+    /未找到.*日志链接/,
+  ],
+])
+  test(`普通初始化提示首个阻断原因 ${path}`, async (t) => {
+    const dom = new JSDOM(markup, { url: `https://bgm.tv${path}` });
+    const w = dom.window,
+      d = w.document;
+    d.title = "宿主标题";
+    d.querySelector("#original input").focus();
+    let reads = 0;
+    const app = startApp({
+      window: w,
+      fetch: async () => {
+        reads++;
+        return new Response(garage());
+      },
+    });
+    t.after(() => {
+      app.stop();
+      w.close();
+    });
+    await settle();
+    const alerts = d.querySelectorAll("[data-user-gadgets-error]");
+    assert.equal(alerts.length, 1);
+    assert.match(alerts[0].textContent, reason);
+    assert.equal(d.querySelector(".navTabs").nextElementSibling, alerts[0]);
+    assert.equal(reads, 0);
+    assert.equal(d.querySelector("[data-user-gadgets-link]"), null);
+    assert.equal(d.querySelector("[data-user-gadgets-view]"), null);
+    assert.equal(d.querySelector("[data-user-gadgets-hidden]"), null);
+    assert.equal(d.title, "宿主标题");
+    assert.equal(d.activeElement, d.querySelector("#original input"));
+    app.stop();
+    assert.equal(d.querySelector("[data-user-gadgets-error]"), null);
+  });
 
 test("身份冲突阻断，不回退登录查看者", async () => {
   let reads = 0;

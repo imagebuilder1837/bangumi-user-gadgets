@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { host, card, garage, fakeTime, settle } from "./support/fixtures.mjs";
+import {
+  viewQuery,
+  filterOption,
+  visibleItems,
+  setSearchValue,
+} from "./support/interactions.mjs";
 
 const bundle = readFileSync(
   new URL("../src/index.user.js", import.meta.url),
@@ -50,29 +56,17 @@ function install(
     w.dispatchEvent(new w.HashChangeEvent("hashchange"));
     await time.advance(0);
   };
-  const query = (selector) =>
-    d.querySelector(`[data-user-gadgets-view] ${selector}`);
+  const query = (selector) => viewQuery(d, selector);
   const button = (text) =>
     [...d.querySelectorAll("[data-user-gadgets-view] button")].find(
       (n) => n.textContent === text,
     );
-  const option = (name, type = "radio") =>
-    [
-      ...d.querySelectorAll(`[data-user-gadgets-view] input[type=${type}]`),
-    ].find(
-      (n) =>
-        n.closest("label").querySelector(".ug-option-name").textContent ===
-        name,
-    );
+  const option = (name, type = "radio") => filterOption(d, name, type);
   const search = (value, key = "Enter") => {
-    const input = query('[aria-label="搜索组件"]');
-    input.value = value;
+    const input = setSearchValue(d, value);
     input.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
   };
-  const visible = () =>
-    [...d.querySelectorAll("[data-user-gadgets-item]")]
-      .filter((n) => !n.hidden)
-      .map((n) => n.dataset.userGadgetsItem);
+  const visible = () => visibleItems(d);
   return {
     w,
     d,
@@ -86,6 +80,41 @@ function install(
     visible,
   };
 }
+
+test("安装产物普通初始化提示身份冲突且不读取或接管", async (t) => {
+  const { d, requests } = install(t, "https://bgm.tv/user/other");
+  assert.match(d.querySelector('[role="alert"]').textContent, /身份冲突/);
+  assert.equal(d.querySelectorAll("[data-user-gadgets-error]").length, 1);
+  assert.equal(d.querySelector("[data-user-gadgets-link]"), null);
+  assert.equal(d.querySelector("[data-user-gadgets-view]"), null);
+  assert.equal(d.querySelector("[data-user-gadgets-hidden]"), null);
+  assert.equal(requests.length, 0);
+});
+
+test("安装产物子分类路径高亮与关联区位置不扩大筛选范围", async (t) => {
+  const { d, route, option, query, visible, button } = install(t);
+  await route("#gadgets");
+  option("评分与统计").click();
+  assert.deepEqual(visible(), ["31", "32", "33"]);
+  const badges = query('[data-user-gadgets-item="31"] .item-tags').children;
+  assert.equal(badges[0].classList.contains("highlighted"), true);
+  assert.equal(badges[1].classList.contains("highlighted"), true);
+  assert.equal(badges[0].getAttribute("aria-pressed"), "false");
+  assert.equal(option("功能增强").checked, false);
+  const related = query(".related-tags-container");
+  assert.equal(
+    related.parentElement,
+    option("功能增强").closest(".main-category"),
+  );
+  assert.equal(related.querySelector("h3"), null);
+  assert.equal(button("重置").tagName, "BUTTON");
+  button("重置").click();
+  assert.equal(related.hidden, true);
+  assert.equal(
+    d.querySelector('[data-user-gadgets-item="31"] .badge_tag.highlighted'),
+    null,
+  );
+});
 
 for (const origin of [
   "https://bgm.tv",

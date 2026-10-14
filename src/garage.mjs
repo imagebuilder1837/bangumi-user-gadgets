@@ -157,62 +157,66 @@ function parseGarage(window, html, origin) {
   return { items: [...items.values()], categories };
 }
 
+// Share only the deadline mechanism, not read/action recovery policies.
+async function withTimeout({ window, timers }, operation, message) {
+  const controller = new window.AbortController();
+  let timeout;
+  try {
+    return await Promise.race([
+      operation(controller.signal),
+      new Promise((_, reject) => {
+        timeout = timers.setTimeout(() => {
+          controller.abort();
+          reject(new Error(message));
+        }, 15000);
+      }),
+    ]);
+  } finally {
+    timers.clearTimeout(timeout);
+  }
+}
+
 // Action requests deliberately do not share the read retry policy.
 export async function toggleGadget({ window, fetch, timers }, href) {
   const url = new URL(href);
   url.searchParams.set("ajax", "1");
-  const controller = new window.AbortController();
-  let timeout;
   try {
-    const response = await Promise.race([
-      fetch(url.href, {
-        method: "GET",
-        credentials: "same-origin",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-        signal: controller.signal,
-      }),
-      new Promise((_, reject) => {
-        timeout = timers.setTimeout(() => {
-          controller.abort();
-          reject(new Error("动作超时。"));
-        }, 15000);
-      }),
-    ]);
+    const response = await withTimeout(
+      { window, timers },
+      (signal) =>
+        fetch(url.href, {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+          signal,
+        }),
+      "动作超时。",
+    );
     return response.ok;
   } catch {
     return false;
-  } finally {
-    timers.clearTimeout(timeout);
   }
 }
 
 export async function readGarage({ window, fetch, timers, now }, origin) {
   const wait = (ms) => new Promise((resolve) => timers.setTimeout(resolve, ms));
   for (let attempt = 0; attempt < 3; attempt++) {
-    const controller = new window.AbortController();
-    let timeout;
     let response, html;
     try {
-      const result = await Promise.race([
-        (async () => {
+      const result = await withTimeout(
+        { window, timers },
+        async (signal) => {
           const r = await fetch(`${origin}/dev/garage`, {
             credentials: "same-origin",
-            signal: controller.signal,
+            signal,
           });
           return { response: r, html: r.ok ? await r.text() : "" };
-        })(),
-        new Promise((_, reject) => {
-          timeout = timers.setTimeout(() => {
-            controller.abort();
-            reject(new Error("读取超时。"));
-          }, 15000);
-        }),
-      ]);
+        },
+        "读取超时。",
+      );
       ({ response, html } = result);
     } catch (error) {
       if (attempt === 2) throw new Error(`读取组件失败：${error.message}`);
-    } finally {
-      timers.clearTimeout(timeout);
     }
     if (response?.status === 429) {
       const retry = response.headers.get("Retry-After");
