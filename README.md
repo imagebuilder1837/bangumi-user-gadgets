@@ -1,9 +1,16 @@
 # Bangumi 用户组件
 
-[安装脚本](https://raw.githubusercontent.com/imagebuilder1837/bangumi-user-gadgets/refs/heads/main/src/index.user.js)（需要 userscript 管理器）。
+在 Bangumi 用户页个人导航中增加“组件”入口，查看该用户发布的超合金组件。
 
-在受支持的 Bangumi 个人页或收藏页，点击“小组”右侧的“组件”，浏览该作者在当前格纳库中可匹配的作品。也可直接打开 `#gadgets`；浏览器前进后退可返回原页面。
+## 效果
 
-当前版本支持分类／关联标签筛选、多词搜索、双向排序，以及格纳库提供合法按钮时的查看者启停操作。动作仅按 HTTP 成功判定，失败／超时不自动重试；恢复原按钮不代表服务端未执行。真实启停协议仍待人工验证。身份按作者链接精确匹配，用户名与数字 UID 不归并；私有、下架或格纳库未展示的作品不在承诺范围内。同一文档重入复用读取结果，刷新整个页面才重新读取成功数据。
+![example](res/example.webp)
 
-持久行为约束见 [docs/spec.md](docs/spec.md)，维护源导航见 [docs/module-guide.md](docs/module-guide.md)。开发约定见 [docs/development.md](docs/development.md)，外部契约与浏览器验收边界见 [docs/external/bangumi.md](docs/external/bangumi.md)。
+## 安装
+
+1. 可以通过[这个链接](https://bgm.tv/dev/app/7299)在 Bangumi 组件页面启用。
+2. 也可以通过[这个链接](https://raw.githubusercontent.com/imagebuilder1837/bangumi-user-gadgets/refs/heads/main/src/index.user.js)安装到常见的脚本管理器，需要浏览器装有 [Tampermonkey](https://tampermonkey.net/) 或 [Violentmonkey](https://violentmonkey.github.io/) 插件。
+
+## License
+
+本项目基于 MIT License 开源。详见 [LICENSE](LICENSE) 文件。
