@@ -79,7 +79,7 @@ test("生成物在代表宿主页初始化并展示浏览器保存页裁剪脱�
     [...d.querySelectorAll(".badge_tag")].map((n) => n.textContent),
     ["功能增强", "评分与统计", "评分", "统计", "UI"],
   );
-  assert.equal(d.querySelector(".btnToggleGadget"), null);
+  assert.equal(d.querySelector(".btnToggleGadget").textContent, "启用");
   assert.equal(d.querySelector(".featuredContainer"), null);
   dom.window.close();
 });

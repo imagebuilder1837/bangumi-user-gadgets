@@ -411,6 +411,11 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
         .find(
           (u) =>
             u &&
+            !u.username &&
+            !u.password &&
+            !u.hash &&
+            u.searchParams.getAll("gh").length === 1 &&
+            !!u.searchParams.get("gh")?.trim() &&
             new RegExp(`^/dev/app/${id}/(enable|disable)$`).test(u.pathname),
         );
       const icon = li.querySelector(".avatar img");
@@ -470,6 +475,35 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       break;
     }
     return { items: [...items.values()], categories };
+  }
+
+  // Action requests deliberately do not share the read retry policy.
+  async function toggleGadget({ window, fetch, timers }, href) {
+    const url = new URL(href);
+    url.searchParams.set("ajax", "1");
+    const controller = new window.AbortController();
+    let timeout;
+    try {
+      const response = await Promise.race([
+        fetch(url.href, {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+          signal: controller.signal,
+        }),
+        new Promise((_, reject) => {
+          timeout = timers.setTimeout(() => {
+            controller.abort();
+            reject(new Error("动作超时。"));
+          }, 15000);
+        }),
+      ]);
+      return response.ok;
+    } catch {
+      return false;
+    } finally {
+      timers.clearTimeout(timeout);
+    }
   }
 
   async function readGarage({ window, fetch, timers, now }, origin) {
@@ -751,7 +785,16 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
     };
   }
 
-  function renderView(document, root, state, retry, now, changeSort, timers) {
+  function renderView(
+    document,
+    root,
+    state,
+    retry,
+    now,
+    changeSort,
+    timers,
+    act,
+  ) {
     root.replaceChildren();
     const el = (tag, cls, text) => {
       const n = document.createElement(tag);
@@ -793,7 +836,29 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       nodes = new Map(),
       metricButtons = new Map(),
       directionButtons = new Map(),
-      highlights = [];
+      highlights = [],
+      actionButtons = new Map();
+    function updateAction(id) {
+      const button = actionButtons.get(id),
+        action = state.actions.get(id);
+      if (!button || !action) return;
+      button.href = action.href;
+      button.className = `btnToggleGadget ${action.enabling ? "btnGreenSmall" : "btnRedSmall"} rr`;
+      button.firstChild.textContent =
+        action.status === "error"
+          ? "出错了"
+          : action.status === "pending"
+            ? action.enabling
+              ? "启用中…"
+              : "停用中…"
+            : action.enabling
+              ? "启用"
+              : "停用";
+      button.setAttribute("aria-disabled", String(action.status === "pending"));
+      button.setAttribute("aria-busy", String(action.status === "pending"));
+      button.style.opacity = action.status === "pending" ? "0.6" : "";
+      button.style.color = action.status === "error" ? "#f00" : "";
+    }
     bar.setAttribute("aria-label", "组件排序");
     metrics.append(el("span", null, "按"));
     function sortButton(container, label, select) {
@@ -866,6 +931,27 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
         img.width = 40;
         a.append(img);
         icon.append(a);
+      }
+      if (state.actions?.has(item.id)) {
+        const button = link(state.actions.get(item.id).href, null);
+        button.setAttribute("role", "button");
+        button.append(el("span"));
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          act(item.id);
+        });
+        // Action links are commands, not detail navigation; auxiliary clicks
+        // must not issue a second GET outside the session's guarded request.
+        button.addEventListener("auxclick", (event) => event.preventDefault());
+        button.addEventListener("keydown", (event) => {
+          if (event.key === " ") {
+            event.preventDefault();
+            act(item.id);
+          }
+        });
+        actionButtons.set(item.id, button);
+        updateAction(item.id);
+        info.append(button);
       }
       const h3 = el("h3");
       h3.append(
@@ -963,7 +1049,7 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
     }
     updateSort();
     updateFilters();
-    return controls.dispose;
+    return { dispose: controls.dispose, updateAction };
   }
 
   function renderFilters(el, tools, state, timers, changed) {
@@ -1135,7 +1221,7 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       stopped = false,
       entry = null,
       errorNode = null,
-      disposeView = null;
+      view = null;
     function clearError() {
       errorNode?.remove();
       errorNode = null;
@@ -1183,8 +1269,8 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
         window.location.hash !== "#gadgets"
       )
         return;
-      disposeView?.();
-      disposeView = renderView(
+      view?.dispose();
+      view = renderView(
         d,
         mounted.root,
         state,
@@ -1200,7 +1286,49 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
           state.orderedItems = sortItems(state.orderedItems, state.sorting);
         },
         timers,
+        (id) => act(state, id),
       );
+    }
+    function updateAction(state, id) {
+      if (
+        mounted &&
+        current === state &&
+        !stopped &&
+        window.location.hash === "#gadgets"
+      )
+        view?.updateAction(id);
+    }
+    async function act(state, id) {
+      const action = state.actions.get(id);
+      if (
+        !action ||
+        action.status === "pending" ||
+        stopped ||
+        current !== state ||
+        window.location.hash !== "#gadgets"
+      )
+        return;
+      timers.clearTimeout(action.recovery);
+      action.status = "pending";
+      updateAction(state, id);
+      const ok = await toggleGadget({ window, fetch, timers }, action.href);
+      if (ok) {
+        const url = new URL(action.href);
+        url.pathname = url.pathname.replace(
+          /\/(enable|disable)$/,
+          action.enabling ? "/disable" : "/enable",
+        );
+        action.href = url.href;
+        action.enabling = !action.enabling;
+        action.status = "idle";
+      } else {
+        action.status = "error";
+        action.recovery = timers.setTimeout(() => {
+          action.status = "idle";
+          updateAction(state, id);
+        }, 2000);
+      }
+      updateAction(state, id);
     }
     function load(state) {
       state.status = "loading";
@@ -1213,6 +1341,18 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
         .then(
           (garage) => {
             state.items = authorItems(garage, state.user);
+            state.actions = new Map(
+              state.items
+                .filter((item) => item.action)
+                .map((item) => [
+                  item.id,
+                  {
+                    href: item.action,
+                    enabling: new URL(item.action).pathname.endsWith("/enable"),
+                    status: "idle",
+                  },
+                ]),
+            );
             state.orderedItems = sortItems(state.items, state.sorting);
             state.categories = garage.categories;
             state.catalog = createCatalog(state.items, state.categories);
@@ -1256,8 +1396,8 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       else publish(state);
     }
     function exit() {
-      disposeView?.();
-      disposeView = null;
+      view?.dispose();
+      view = null;
       mounted?.hide();
       mounted = current = null;
       clearError();

@@ -1,5 +1,5 @@
 import { inspectHost, mountHost } from "./host.mjs";
-import { readGarage } from "./garage.mjs";
+import { readGarage, toggleGadget } from "./garage.mjs";
 import {
   authorItems,
   createSorting,
@@ -27,7 +27,7 @@ export function startApp({
     stopped = false,
     entry = null,
     errorNode = null,
-    disposeView = null;
+    view = null;
   function clearError() {
     errorNode?.remove();
     errorNode = null;
@@ -75,8 +75,8 @@ export function startApp({
       window.location.hash !== "#gadgets"
     )
       return;
-    disposeView?.();
-    disposeView = renderView(
+    view?.dispose();
+    view = renderView(
       d,
       mounted.root,
       state,
@@ -92,7 +92,49 @@ export function startApp({
         state.orderedItems = sortItems(state.orderedItems, state.sorting);
       },
       timers,
+      (id) => act(state, id),
     );
+  }
+  function updateAction(state, id) {
+    if (
+      mounted &&
+      current === state &&
+      !stopped &&
+      window.location.hash === "#gadgets"
+    )
+      view?.updateAction(id);
+  }
+  async function act(state, id) {
+    const action = state.actions.get(id);
+    if (
+      !action ||
+      action.status === "pending" ||
+      stopped ||
+      current !== state ||
+      window.location.hash !== "#gadgets"
+    )
+      return;
+    timers.clearTimeout(action.recovery);
+    action.status = "pending";
+    updateAction(state, id);
+    const ok = await toggleGadget({ window, fetch, timers }, action.href);
+    if (ok) {
+      const url = new URL(action.href);
+      url.pathname = url.pathname.replace(
+        /\/(enable|disable)$/,
+        action.enabling ? "/disable" : "/enable",
+      );
+      action.href = url.href;
+      action.enabling = !action.enabling;
+      action.status = "idle";
+    } else {
+      action.status = "error";
+      action.recovery = timers.setTimeout(() => {
+        action.status = "idle";
+        updateAction(state, id);
+      }, 2000);
+    }
+    updateAction(state, id);
   }
   function load(state) {
     state.status = "loading";
@@ -105,6 +147,18 @@ export function startApp({
       .then(
         (garage) => {
           state.items = authorItems(garage, state.user);
+          state.actions = new Map(
+            state.items
+              .filter((item) => item.action)
+              .map((item) => [
+                item.id,
+                {
+                  href: item.action,
+                  enabling: new URL(item.action).pathname.endsWith("/enable"),
+                  status: "idle",
+                },
+              ]),
+          );
           state.orderedItems = sortItems(state.items, state.sorting);
           state.categories = garage.categories;
           state.catalog = createCatalog(state.items, state.categories);
@@ -148,8 +202,8 @@ export function startApp({
     else publish(state);
   }
   function exit() {
-    disposeView?.();
-    disposeView = null;
+    view?.dispose();
+    view = null;
     mounted?.hide();
     mounted = current = null;
     clearError();

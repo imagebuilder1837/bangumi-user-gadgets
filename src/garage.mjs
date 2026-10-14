@@ -91,7 +91,13 @@ function parseGarage(window, html, origin) {
       .map((a) => safeURL(a.getAttribute("href"), origin, true))
       .find(
         (u) =>
-          u && new RegExp(`^/dev/app/${id}/(enable|disable)$`).test(u.pathname),
+          u &&
+          !u.username &&
+          !u.password &&
+          !u.hash &&
+          u.searchParams.getAll("gh").length === 1 &&
+          !!u.searchParams.get("gh")?.trim() &&
+          new RegExp(`^/dev/app/${id}/(enable|disable)$`).test(u.pathname),
       );
     const icon = li.querySelector(".avatar img");
     const item = {
@@ -149,6 +155,35 @@ function parseGarage(window, html, origin) {
     break;
   }
   return { items: [...items.values()], categories };
+}
+
+// Action requests deliberately do not share the read retry policy.
+export async function toggleGadget({ window, fetch, timers }, href) {
+  const url = new URL(href);
+  url.searchParams.set("ajax", "1");
+  const controller = new window.AbortController();
+  let timeout;
+  try {
+    const response = await Promise.race([
+      fetch(url.href, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        signal: controller.signal,
+      }),
+      new Promise((_, reject) => {
+        timeout = timers.setTimeout(() => {
+          controller.abort();
+          reject(new Error("动作超时。"));
+        }, 15000);
+      }),
+    ]);
+    return response.ok;
+  } catch {
+    return false;
+  } finally {
+    timers.clearTimeout(timeout);
+  }
 }
 
 export async function readGarage({ window, fetch, timers, now }, origin) {

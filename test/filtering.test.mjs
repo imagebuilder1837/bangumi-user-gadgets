@@ -304,7 +304,7 @@ test("分类损坏局部降级，搜索与排序仍可用且不执行配置脚�
   assert.match(root(d).textContent, /分类配置暂不可用/);
   assert.equal(w.bad, undefined);
   assert.equal(root(d).querySelectorAll("input[type=radio]").length, 0);
-  assert.equal(root(d).querySelector("[role=button]"), null);
+  assert.equal(root(d).querySelector(".badge_tag[role=button]"), null);
   enter(w, d, "alpha");
   assert.deepEqual(visible(d), ["1"]);
   [...root(d).querySelectorAll(".ug-sort button")]

@@ -60,6 +60,7 @@ export function renderView(
   now,
   changeSort,
   timers,
+  act,
 ) {
   root.replaceChildren();
   const el = (tag, cls, text) => {
@@ -102,7 +103,29 @@ export function renderView(
     nodes = new Map(),
     metricButtons = new Map(),
     directionButtons = new Map(),
-    highlights = [];
+    highlights = [],
+    actionButtons = new Map();
+  function updateAction(id) {
+    const button = actionButtons.get(id),
+      action = state.actions.get(id);
+    if (!button || !action) return;
+    button.href = action.href;
+    button.className = `btnToggleGadget ${action.enabling ? "btnGreenSmall" : "btnRedSmall"} rr`;
+    button.firstChild.textContent =
+      action.status === "error"
+        ? "出错了"
+        : action.status === "pending"
+          ? action.enabling
+            ? "启用中…"
+            : "停用中…"
+          : action.enabling
+            ? "启用"
+            : "停用";
+    button.setAttribute("aria-disabled", String(action.status === "pending"));
+    button.setAttribute("aria-busy", String(action.status === "pending"));
+    button.style.opacity = action.status === "pending" ? "0.6" : "";
+    button.style.color = action.status === "error" ? "#f00" : "";
+  }
   bar.setAttribute("aria-label", "组件排序");
   metrics.append(el("span", null, "按"));
   function sortButton(container, label, select) {
@@ -172,6 +195,27 @@ export function renderView(
       img.width = 40;
       a.append(img);
       icon.append(a);
+    }
+    if (state.actions?.has(item.id)) {
+      const button = link(state.actions.get(item.id).href, null);
+      button.setAttribute("role", "button");
+      button.append(el("span"));
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        act(item.id);
+      });
+      // Action links are commands, not detail navigation; auxiliary clicks
+      // must not issue a second GET outside the session's guarded request.
+      button.addEventListener("auxclick", (event) => event.preventDefault());
+      button.addEventListener("keydown", (event) => {
+        if (event.key === " ") {
+          event.preventDefault();
+          act(item.id);
+        }
+      });
+      actionButtons.set(item.id, button);
+      updateAction(item.id);
+      info.append(button);
     }
     const h3 = el("h3");
     h3.append(
@@ -265,7 +309,7 @@ export function renderView(
   }
   updateSort();
   updateFilters();
-  return controls.dispose;
+  return { dispose: controls.dispose, updateAction };
 }
 
 function renderFilters(el, tools, state, timers, changed) {

@@ -14,15 +14,18 @@ test("入口不读取，激活后精确匹配作者、安全显示，退出与�
   const link = d.querySelector("[data-user-gadgets-link] a");
   assert.equal(link.parentElement.previousElementSibling.textContent, "小组");
   link.click();
-  await settle();
+  // A native hashchange schedules another task; under parallel jsdom load,
+  // a fixed 20 ms sleep can finish before that second task runs.
+  for (let tries = 0; d.title !== "同名 的组件" && tries < 50; tries++)
+    await settle();
   assert.equal(d.title, "同名 的组件");
   assert.equal(
     d.querySelectorAll("[data-user-gadgets-view] .gadgetList li").length,
     1,
   );
   assert.equal(
-    d.querySelector("[data-user-gadgets-view] .btnToggleGadget"),
-    null,
+    d.querySelector("[data-user-gadgets-view] .btnToggleGadget").textContent,
+    "启用",
   );
   assert.equal(d.querySelector("[data-user-gadgets-view] script"), null);
   const original = d.querySelector("#original");
