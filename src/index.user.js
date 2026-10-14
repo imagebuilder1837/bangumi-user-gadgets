@@ -225,6 +225,13 @@
 [data-user-gadgets-view] .ug-shell { display:flex;gap:15px; }
 [data-user-gadgets-view] .ug-list { width:700px;min-width:0; }
 [data-user-gadgets-view] .ug-tools { width:280px;flex-shrink:0; }
+[data-user-gadgets-view] .ug-sort { display:flex;flex-wrap:wrap;align-items:baseline;gap:4px; }
+[data-user-gadgets-view] .ug-sort .filters { display:flex;flex-wrap:wrap;align-items:baseline;gap:2px; }
+[data-user-gadgets-view] .ug-sort-directions { margin-left:auto; }
+[data-user-gadgets-view] .ug-sort button.l { appearance:none;border:0;background:none;color:#0084b4;font:inherit;cursor:pointer;border-radius:15px;padding:2px 8px; }
+html[data-theme=dark] [data-user-gadgets-view] .ug-sort button.l { color:#2ea6ff; }
+[data-user-gadgets-view] .ug-sort button[aria-pressed=true],[data-user-gadgets-view] .ug-sort button:hover,[data-user-gadgets-view] .ug-sort button:focus-visible { background:var(--primary-color,#f09199);color:#fff; }
+[data-user-gadgets-view] .ug-sort button:focus-visible { outline:2px solid currentColor;outline-offset:2px; }
 [data-user-gadgets-view] .gadgetList { margin:0;padding:0;list-style:none; }
 [data-user-gadgets-view] .gadgetList li { display:flex;padding:5px 0;border-bottom:1px solid rgba(128,128,128,.2);gap:18px; }
 [data-user-gadgets-view] .gadgetList .avatar img { width:40px;height:40px;border-radius:5px; }
@@ -493,7 +500,27 @@
     return garage.items.filter((item) => item.author === user);
   }
 
-  function renderView(document, root, state, retry, now) {
+  function createSorting() {
+    return {
+      metric: "collects",
+      directions: { collects: "desc", created: "desc", updated: "desc" },
+    };
+  }
+
+  function sortItems(items, sorting) {
+    const { metric, directions } = sorting;
+    const value = (item) =>
+      metric === "collects" ? item.collects : item[metric].value;
+    return [...items].sort((a, b) => {
+      const av = value(a),
+        bv = value(b);
+      if (av == null) return bv == null ? 0 : 1;
+      if (bv == null) return -1;
+      return directions[metric] === "desc" ? bv - av : av - bv;
+    });
+  }
+
+  function renderView(document, root, state, retry, now, changeSort) {
     root.replaceChildren();
     const el = (tag, cls, text) => {
       const n = document.createElement(tag);
@@ -528,8 +555,67 @@
       list.append(el("p", "tip", "格纳库中未找到该用户开发的组件"));
       return;
     }
-    const ul = el("ul", "gadgetList list_all");
-    list.append(ul);
+    const bar = el("div", "browserTools clearit ug-sort"),
+      metrics = el("div", "filters ug-sort-metrics"),
+      directions = el("div", "filters ug-sort-directions"),
+      ul = el("ul", "gadgetList list_all"),
+      nodes = new Map(),
+      metricButtons = new Map(),
+      directionButtons = new Map();
+    bar.setAttribute("aria-label", "组件排序");
+    metrics.append(el("span", null, "按"));
+    function sortButton(container, label, select) {
+      const button = el("button", "l", label);
+      button.type = "button";
+      button.addEventListener("click", select);
+      container.append(button);
+      return button;
+    }
+    function updateSort() {
+      const { metric, directions: remembered } = state.sorting;
+      for (const [value, button] of metricButtons)
+        button.setAttribute("aria-pressed", String(value === metric));
+      for (const [value, button] of directionButtons) {
+        button.textContent =
+          metric === "collects"
+            ? value === "desc"
+              ? "从多到少"
+              : "从少到多"
+            : value === "desc"
+              ? "从新到旧"
+              : "从旧到新";
+        button.setAttribute(
+          "aria-pressed",
+          String(value === remembered[metric]),
+        );
+      }
+      for (const item of state.orderedItems) ul.append(nodes.get(item.id));
+    }
+    for (const [metric, label] of [
+      ["collects", "热门程度"],
+      ["created", "创建日期"],
+      ["updated", "更新日期"],
+    ]) {
+      metricButtons.set(
+        metric,
+        sortButton(metrics, label, () => {
+          changeSort(metric);
+          updateSort();
+        }),
+      );
+    }
+    metrics.append(el("span", null, "排序"));
+    for (const direction of ["desc", "asc"]) {
+      directionButtons.set(
+        direction,
+        sortButton(directions, "", () => {
+          changeSort(state.sorting.metric, direction);
+          updateSort();
+        }),
+      );
+    }
+    bar.append(metrics, directions);
+    list.append(bar, ul);
     for (const item of state.items) {
       const li = el("li", "clearit tml_item");
       li.dataset.userGadgetsItem = item.id;
@@ -577,8 +663,9 @@
       item.tags.forEach((tag) => tags.append(el("span", "badge_tag", tag)));
       info.append(tags);
       li.append(icon, info);
-      ul.append(li);
+      nodes.set(item.id, li);
     }
+    updateSort();
   }
 
   const applications = new WeakMap();
@@ -656,6 +743,11 @@
           load(state);
         },
         now,
+        (metric, direction) => {
+          state.sorting.metric = metric;
+          if (direction) state.sorting.directions[metric] = direction;
+          state.orderedItems = sortItems(state.orderedItems, state.sorting);
+        },
       );
     }
     function load(state) {
@@ -669,6 +761,7 @@
         .then(
           (garage) => {
             state.items = authorItems(garage, state.user);
+            state.orderedItems = sortItems(state.items, state.sorting);
             state.categories = garage.categories;
             state.status = "success";
           },
@@ -695,7 +788,13 @@
       mounted = mountHost(window, host, entry.querySelector("a"));
       let state = sessions.get(host.user);
       if (!state) {
-        state = { user: host.user, status: "idle", items: [] };
+        state = {
+          user: host.user,
+          status: "idle",
+          items: [],
+          orderedItems: [],
+          sorting: createSorting(),
+        };
         sessions.set(host.user, state);
       }
       current = state;

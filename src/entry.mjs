@@ -1,6 +1,6 @@
 import { inspectHost, mountHost } from "./host.mjs";
 import { readGarage } from "./garage.mjs";
-import { authorItems } from "./model.mjs";
+import { authorItems, createSorting, sortItems } from "./model.mjs";
 import { renderView } from "./view.mjs";
 
 const applications = new WeakMap();
@@ -78,6 +78,11 @@ export function startApp({
         load(state);
       },
       now,
+      (metric, direction) => {
+        state.sorting.metric = metric;
+        if (direction) state.sorting.directions[metric] = direction;
+        state.orderedItems = sortItems(state.orderedItems, state.sorting);
+      },
     );
   }
   function load(state) {
@@ -91,6 +96,7 @@ export function startApp({
       .then(
         (garage) => {
           state.items = authorItems(garage, state.user);
+          state.orderedItems = sortItems(state.items, state.sorting);
           state.categories = garage.categories;
           state.status = "success";
         },
@@ -117,7 +123,13 @@ export function startApp({
     mounted = mountHost(window, host, entry.querySelector("a"));
     let state = sessions.get(host.user);
     if (!state) {
-      state = { user: host.user, status: "idle", items: [] };
+      state = {
+        user: host.user,
+        status: "idle",
+        items: [],
+        orderedItems: [],
+        sorting: createSorting(),
+      };
       sessions.set(host.user, state);
     }
     current = state;

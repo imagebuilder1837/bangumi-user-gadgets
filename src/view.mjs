@@ -1,4 +1,4 @@
-export function renderView(document, root, state, retry, now) {
+export function renderView(document, root, state, retry, now, changeSort) {
   root.replaceChildren();
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -33,8 +33,64 @@ export function renderView(document, root, state, retry, now) {
     list.append(el("p", "tip", "格纳库中未找到该用户开发的组件"));
     return;
   }
-  const ul = el("ul", "gadgetList list_all");
-  list.append(ul);
+  const bar = el("div", "browserTools clearit ug-sort"),
+    metrics = el("div", "filters ug-sort-metrics"),
+    directions = el("div", "filters ug-sort-directions"),
+    ul = el("ul", "gadgetList list_all"),
+    nodes = new Map(),
+    metricButtons = new Map(),
+    directionButtons = new Map();
+  bar.setAttribute("aria-label", "组件排序");
+  metrics.append(el("span", null, "按"));
+  function sortButton(container, label, select) {
+    const button = el("button", "l", label);
+    button.type = "button";
+    button.addEventListener("click", select);
+    container.append(button);
+    return button;
+  }
+  function updateSort() {
+    const { metric, directions: remembered } = state.sorting;
+    for (const [value, button] of metricButtons)
+      button.setAttribute("aria-pressed", String(value === metric));
+    for (const [value, button] of directionButtons) {
+      button.textContent =
+        metric === "collects"
+          ? value === "desc"
+            ? "从多到少"
+            : "从少到多"
+          : value === "desc"
+            ? "从新到旧"
+            : "从旧到新";
+      button.setAttribute("aria-pressed", String(value === remembered[metric]));
+    }
+    for (const item of state.orderedItems) ul.append(nodes.get(item.id));
+  }
+  for (const [metric, label] of [
+    ["collects", "热门程度"],
+    ["created", "创建日期"],
+    ["updated", "更新日期"],
+  ]) {
+    metricButtons.set(
+      metric,
+      sortButton(metrics, label, () => {
+        changeSort(metric);
+        updateSort();
+      }),
+    );
+  }
+  metrics.append(el("span", null, "排序"));
+  for (const direction of ["desc", "asc"]) {
+    directionButtons.set(
+      direction,
+      sortButton(directions, "", () => {
+        changeSort(state.sorting.metric, direction);
+        updateSort();
+      }),
+    );
+  }
+  bar.append(metrics, directions);
+  list.append(bar, ul);
   for (const item of state.items) {
     const li = el("li", "clearit tml_item");
     li.dataset.userGadgetsItem = item.id;
@@ -82,6 +138,7 @@ export function renderView(document, root, state, retry, now) {
     item.tags.forEach((tag) => tags.append(el("span", "badge_tag", tag)));
     info.append(tags);
     li.append(icon, info);
-    ul.append(li);
+    nodes.set(item.id, li);
   }
+  updateSort();
 }

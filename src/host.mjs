@@ -187,6 +187,13 @@ export function mountHost(w, host, link) {
 [data-user-gadgets-view] .ug-shell { display:flex;gap:15px; }
 [data-user-gadgets-view] .ug-list { width:700px;min-width:0; }
 [data-user-gadgets-view] .ug-tools { width:280px;flex-shrink:0; }
+[data-user-gadgets-view] .ug-sort { display:flex;flex-wrap:wrap;align-items:baseline;gap:4px; }
+[data-user-gadgets-view] .ug-sort .filters { display:flex;flex-wrap:wrap;align-items:baseline;gap:2px; }
+[data-user-gadgets-view] .ug-sort-directions { margin-left:auto; }
+[data-user-gadgets-view] .ug-sort button.l { appearance:none;border:0;background:none;color:#0084b4;font:inherit;cursor:pointer;border-radius:15px;padding:2px 8px; }
+html[data-theme=dark] [data-user-gadgets-view] .ug-sort button.l { color:#2ea6ff; }
+[data-user-gadgets-view] .ug-sort button[aria-pressed=true],[data-user-gadgets-view] .ug-sort button:hover,[data-user-gadgets-view] .ug-sort button:focus-visible { background:var(--primary-color,#f09199);color:#fff; }
+[data-user-gadgets-view] .ug-sort button:focus-visible { outline:2px solid currentColor;outline-offset:2px; }
 [data-user-gadgets-view] .gadgetList { margin:0;padding:0;list-style:none; }
 [data-user-gadgets-view] .gadgetList li { display:flex;padding:5px 0;border-bottom:1px solid rgba(128,128,128,.2);gap:18px; }
 [data-user-gadgets-view] .gadgetList .avatar img { width:40px;height:40px;border-radius:5px; }
