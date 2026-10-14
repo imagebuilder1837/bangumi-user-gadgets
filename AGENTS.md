@@ -1,23 +1,21 @@
-# AGENTS.md
+# Repository instructions
 
-## Agent skills
+## 核心原则
 
-### Issue tracker
+- 优先核对并复用适用的原生 CSS；仅为缺口增加自有根内的最小适配，并向用户说明。
+- metadata 与版本变更逐字段人工批准，开发依赖变更事先批准。
+- Issue 默认只读；仅在明确请求或相关技能授权具体动作时写入。
+- 提交采用 Conventional Commits；提交前在最终变更状态运行 `npm run check`，修改后重跑。
+- 文档仅记录当前有用且难以从代码直接获得的约定、理由和陷阱；细则单处维护。
 
-Issue 使用 GitHub Issues；操作前读取 `docs/agents/issue-tracker.md`。
+## 工作前读取
 
-### Triage labels
+- 探索代码或修改领域文档：读取 [领域指南](docs/agents/domain.md)。
+- 实施、测试、构建或交付：读取 [开发与交付](docs/development.md)。
+- 修改宿主接管、格纳库解析、启停请求或站点样式：另读 [Bangumi 外部事实](docs/external/bangumi.md)。
+- 修改 userscript metadata、项目版本或开发依赖：读取 [人工治理](docs/agents/metadata.md)。
+- 操作 issue：读取 [tracker 指南](docs/agents/issue-tracker.md)；分类或改标签时另读 [triage 映射](docs/agents/triage-labels.md)。
 
-Triage 使用默认五类标签；分类前读取 `docs/agents/triage-labels.md`。
+## 维护入口
 
-### Domain docs
-
-领域文档采用 single-context；探索代码前读取 `docs/agents/domain.md`。
-
-### Development
-
-实施、测试或交付前读取 `docs/development.md`；核查宿主或格纳库契约时读取 `docs/external/bangumi.md`。
-
-### Metadata
-
-修改 metadata、版本或开发依赖前读取 `docs/agents/metadata.md`。
+`src/index.user.js` 是生成物；修改维护源后单独构建，避免默认加载整个产物。维护源与命令从构建入口、imports 和 package scripts 定位，不额外维护目录地图。
