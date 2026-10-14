@@ -7,7 +7,7 @@
 - 读取根目录 `CONTEXT.md`。
 - 读取 `docs/adr/` 中与当前任务相关的 ADR。
 
-文件不存在时静默继续。领域术语或决策明确后按需使用 domain-modeling 技能维护，不预建 CONTEXT-MAP 或 ADR 占位。
+文件不存在时静默继续。领域术语或决策明确后按需使用 domain-modeling 技能维护，不预建 CONTEXT-MAP。
 
 ## 维护职责
 

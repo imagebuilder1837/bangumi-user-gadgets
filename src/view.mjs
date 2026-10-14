@@ -269,6 +269,7 @@ export function renderView(
 function renderFilters(el, tools, state, timers, changed) {
   const { catalog, filters } = state;
   const searchBox = el("div", "sideInner ug-search"),
+    search = el("div", "search"),
     searchBar = el("div", "searchBar"),
     inner = el("div", "inner"),
     input = el("input", "textfield");
@@ -276,7 +277,8 @@ function renderFilters(el, tools, state, timers, changed) {
   input.setAttribute("aria-label", "搜索组件");
   input.placeholder = "输入关键词 (标题 / 描述 / 标签)";
   input.value = filters.query;
-  searchBox.append(el("h2", "subtitle", "搜索组件"), searchBar);
+  searchBox.append(el("h2", "subtitle", "搜索组件"), search);
+  search.append(searchBar);
   searchBar.append(inner);
   inner.append(input);
   tools.append(searchBox);
@@ -326,8 +328,9 @@ function renderFilters(el, tools, state, timers, changed) {
     section.append(el("p", "tip", "分类配置暂不可用"));
     return { update() {}, dispose: cancel };
   }
-  const reset = el("button", "ug-reset rr l", "重置");
+  const reset = el("button", "ug-reset rr l");
   reset.type = "button";
+  reset.append(el("small", null, "重置"));
   heading.append(reset);
   reset.addEventListener("click", () => {
     filters.category = null;

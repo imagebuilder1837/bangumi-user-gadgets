@@ -226,7 +226,15 @@
 [data-user-gadgets-view] .ug-list { width:700px;min-width:0; }
 [data-user-gadgets-view] .ug-tools { width:280px;flex-shrink:0; }
 [data-user-gadgets-view] [hidden] { display:none!important; }
-[data-user-gadgets-view] .ug-search { margin-bottom:15px; }
+[data-user-gadgets-view] .ug-tools .sideInner { background-color:#fafafa;border:1px solid #eee;border-radius:15px;padding:5px 0 0;margin:0 0 10px; }
+html[data-theme=dark] [data-user-gadgets-view] .ug-tools .sideInner { background-color:#3d3d3f;border-color:#444; }
+[data-user-gadgets-view] .ug-tools .sideInner h2 { box-sizing:border-box;border:none;background-color:#fff;border-radius:15px;margin:0 5px;padding:5px 10px; }
+html[data-theme=dark] [data-user-gadgets-view] .ug-tools .sideInner h2 { background-color:#303030; }
+[data-user-gadgets-view] .ug-tools .sideInner h2 small { font-size:12px; }
+[data-user-gadgets-view] .ug-tools .search { margin:5px; }
+[data-user-gadgets-view] .ug-tools .searchBar { background-color:#fff; }
+html[data-theme=dark] [data-user-gadgets-view] .ug-tools .searchBar { background-color:#303030; }
+[data-user-gadgets-view] .ug-tools .search .textfield { border-radius:15px;box-sizing:border-box;width:100%;padding:5px 10px; }
 [data-user-gadgets-view] .main-category { margin-bottom:10px; }
 [data-user-gadgets-view] .main-category > .tag-checkbox { margin:5px;font-size:14px;font-weight:bold; }
 [data-user-gadgets-view] .sub-categories,[data-user-gadgets-view] .related-tags-wrapper { display:flex;flex-wrap:wrap;gap:3px; }
@@ -961,6 +969,7 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
   function renderFilters(el, tools, state, timers, changed) {
     const { catalog, filters } = state;
     const searchBox = el("div", "sideInner ug-search"),
+      search = el("div", "search"),
       searchBar = el("div", "searchBar"),
       inner = el("div", "inner"),
       input = el("input", "textfield");
@@ -968,7 +977,8 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
     input.setAttribute("aria-label", "搜索组件");
     input.placeholder = "输入关键词 (标题 / 描述 / 标签)";
     input.value = filters.query;
-    searchBox.append(el("h2", "subtitle", "搜索组件"), searchBar);
+    searchBox.append(el("h2", "subtitle", "搜索组件"), search);
+    search.append(searchBar);
     searchBar.append(inner);
     inner.append(input);
     tools.append(searchBox);
@@ -1018,8 +1028,9 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       section.append(el("p", "tip", "分类配置暂不可用"));
       return { update() {}, dispose: cancel };
     }
-    const reset = el("button", "ug-reset rr l", "重置");
+    const reset = el("button", "ug-reset rr l");
     reset.type = "button";
+    reset.append(el("small", null, "重置"));
     heading.append(reset);
     reset.addEventListener("click", () => {
       filters.category = null;

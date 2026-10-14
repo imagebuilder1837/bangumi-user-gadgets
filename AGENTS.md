@@ -18,4 +18,4 @@
 
 ## 维护入口
 
-`src/index.user.js` 是生成物；修改维护源后单独构建，避免默认加载整个产物。维护源与命令从构建入口、imports 和 package scripts 定位，不额外维护目录地图。
+`src/index.user.js` 是生成物；修改维护源后单独构建，避免默认加载整个产物。维护边界见 [维护源导航](docs/module-guide.md)，行为约束见 [规格](docs/spec.md)；具体命令从 package scripts 定位。

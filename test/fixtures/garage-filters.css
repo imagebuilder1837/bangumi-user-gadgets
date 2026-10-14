@@ -1,5 +1,6 @@
 /* Relevant global rules from the saved bgm.tv garage stylesheet.
-   The application must bridge keyboard visibility and hidden flex elements. */
+   Keep ancestor-ID rules intact so missing sidebar bridges fail comparison tests.
+   The application must also bridge keyboard visibility and hidden flex elements. */
 .tag-checkbox { display:flex;align-items:center;padding:4px 10px;border-radius:15px;cursor:pointer;border:1px solid #eee; }
 html[data-theme=dark] .tag-checkbox { border:1px solid #444; }
 .tag-checkbox input[type=checkbox],.tag-checkbox input[type=radio] { display:none; }
@@ -11,3 +12,15 @@ html[data-theme=dark] .tag-checkbox { border:1px solid #444; }
 .searchBar input.textfield { width:100%;padding:0 5px;background:transparent;line-height:20px;border:none; }
 .item-tags { display:flex;flex-wrap:wrap;gap:4px; }
 span.badge_tag.highlighted { background:#369cf8!important;color:#fff!important; }
+h2 { margin:0;padding:0; }
+h2.subtitle { font-weight:300;font-size:18px;padding:0 5px 0 0;line-height:140%;color:#555; }
+html[data-theme=dark] h2.subtitle { color:#dedede; }
+#columnSubjectBrowserB .sideInner { background-color:#fafafa;border:1px solid #eee;border-radius:15px;padding:5px 0 0 0;margin:0 0 10px 0; }
+html[data-theme=dark] #columnSubjectBrowserB .sideInner { background-color:#3d3d3f;border:1px solid #444; }
+#columnSubjectBrowserB .sideInner h2 { box-sizing:border-box;border:none;background-color:#fff;border-radius:15px;margin:0 5px;padding:5px 10px; }
+html[data-theme=dark] #columnSubjectBrowserB .sideInner h2 { background-color:#303030; }
+#columnSubjectBrowserB .sideInner h2 small { font-size:12px; }
+#columnSubjectBrowserB .sideInner div.search { margin:5px; }
+#columnSubjectBrowserB .sideInner div.search .searchBar { background-color:#fff; }
+html[data-theme=dark] #columnSubjectBrowserB .sideInner div.search .searchBar { background-color:#303030; }
+#columnSubjectBrowserB .sideInner div.search .textfield { border-radius:15px;box-sizing:border-box;width:100%;padding:5px 10px; }

@@ -1,6 +1,6 @@
 # Issue tracker：GitHub
 
-本仓库的 spec 与 tickets 使用 GitHub Issues，通过 `gh` 操作；在仓库内从 git remote 确认目标仓库，避免写入参考项目。
+本仓库的需求讨论、tickets 与验收记录使用 GitHub Issues，通过 `gh` 操作；持久行为约束维护于 [spec.md](../spec.md)。在仓库内从 git remote 确认目标仓库，避免写入参考项目。
 
 ## 权限
 
