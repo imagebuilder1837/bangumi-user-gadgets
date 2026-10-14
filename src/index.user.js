@@ -28,8 +28,10 @@
 // @downloadURL  https://raw.githubusercontent.com/imagebuilder1837/bangumi-user-gadgets/refs/heads/main/src/index.user.js
 // @updateURL    https://raw.githubusercontent.com/imagebuilder1837/bangumi-user-gadgets/refs/heads/main/src/index.user.js
 // ==/UserScript==
+
+// Generated from src/main.mjs. Do not edit; run npm run build.
 (function () {
-  'use strict';
+  "use strict";
 
   const userPath =
     /^\/user\/([^/]+)(?:\/(blog|index|friends|rev_friends|timeline|mono|groups|wiki)(?:\/[^/]+)*)?\/?$/;
@@ -98,8 +100,10 @@
           try {
             return (
               new URL(a.href).origin === l.origin &&
-              decodeURIComponent(new URL(a.href).pathname).replace(/\/$/, "") ===
-                `/user/${user}`
+              decodeURIComponent(new URL(a.href).pathname).replace(
+                /\/$/,
+                "",
+              ) === `/user/${user}`
             );
           } catch {
             return false;
@@ -177,7 +181,8 @@
     const previous = node.classList.contains("focus");
     node.classList.toggle("focus", enabled);
     let owned = true;
-    const containsFocus = (value) => (value || "").split(/\s+/).includes("focus");
+    const containsFocus = (value) =>
+      (value || "").split(/\s+/).includes("focus");
     const observeChanges = (records) => {
       for (let i = 0; i < records.length; i++) {
         const before = containsFocus(records[i].oldValue);
@@ -375,7 +380,8 @@
         .map((a) => safeURL(a.getAttribute("href"), origin, true))
         .find(
           (u) =>
-            u && new RegExp(`^/dev/app/${id}/(enable|disable)$`).test(u.pathname),
+            u &&
+            new RegExp(`^/dev/app/${id}/(enable|disable)$`).test(u.pathname),
         );
       const icon = li.querySelector(".avatar img");
       const item = {
@@ -430,7 +436,8 @@
   }
 
   async function readGarage({ window, fetch, timers, now }, origin) {
-    const wait = (ms) => new Promise((resolve) => timers.setTimeout(resolve, ms));
+    const wait = (ms) =>
+      new Promise((resolve) => timers.setTimeout(resolve, ms));
     for (let attempt = 0; attempt < 3; attempt++) {
       const controller = new window.AbortController();
       let timeout;
@@ -734,5 +741,4 @@
   }
 
   startApp({ window });
-
 })();
