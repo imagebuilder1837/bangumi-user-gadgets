@@ -1,0 +1,22 @@
+/* Card rules excerpted from the saved bgm.tv /dev/garage stylesheet.
+   Retain native #timeline selectors: tests compare the real garage structure
+   with the application's namespaced bridge, not a second copy of that bridge. */
+body { font-size:12px;line-height:150%;color:#000; }
+html[data-theme=dark] body { color:#fff; }
+h3,li,p,span,ul { margin:0;padding:0; }
+ul { list-style:none; }
+a.l { color:#0084b4;text-decoration:none; }
+html[data-theme=dark] a.l { color:#2ea6ff; }
+.tip_i { font-size:12px;color:#ccc;text-shadow:none; }
+.tip_j { font-size:12px;color:#999;text-shadow:none; }
+img.avatar { border-radius:8px;box-shadow:inset 0 0 2px #bbb;padding:1px; }
+span.badge_tag { box-sizing:border-box;background:transparent;color:#888;font-size:12px;border-radius:20px;border:1px solid #eee;min-width:30px;text-align:center;padding:1px 10px; }
+html[data-theme=dark] span.badge_tag { border:1px solid #444; }
+.item-tags { margin:5px 0;display:flex;flex-wrap:wrap;gap:4px; }
+#timeline ul { box-sizing:border-box; }
+#timeline ul li { box-sizing:border-box;margin:5px 0;padding:5px 0;position:relative;word-wrap:break-word; }
+#timeline ul li span.avatar { display:block;height:50px;left:0;margin:0 5px;overflow:hidden;position:absolute;width:50px; }
+#timeline ul li > .info { display:block;font-size:14px;padding:0 5px 5px 0;margin-left:60px;border-bottom:1px dotted #e8e8e8;color:#666;min-height:35px; }
+html[data-theme=dark] #timeline ul li > .info { border-bottom:1px dotted #555;color:#d8d8d8; }
+#timeline ul li .desc { display:block;margin:5px 0; }
+#timeline ul li h3 { font-size:14px;margin:0 0 3px 0; }

@@ -120,18 +120,30 @@ export function renderView(document, root, state, retry, now, changeSort) {
     const meta = el("span", "tip_i");
     meta.append(link(item.authorHref, item.authorName));
     if (item.created.text)
-      meta.append(document.createTextNode(` 创建于 ${item.created.text}`));
+      meta.append(
+        document.createTextNode(" 创建于 "),
+        el("span", "tip_j attr_timestamp", item.created.text),
+      );
     if (item.updated.text)
-      meta.append(document.createTextNode(` · 更新 ${item.updated.text}`));
+      meta.append(
+        document.createTextNode(" · 更新 "),
+        el("span", "tip_j attr_lasttouch", item.updated.text),
+      );
     if (item.collects != null)
-      meta.append(document.createTextNode(` · ${item.collects} 人启用`));
+      meta.append(
+        document.createTextNode(" · "),
+        el("span", "tip_j attr_collects", item.collects),
+        document.createTextNode(" 人启用"),
+      );
     info.append(meta);
     const desc = el("p", "desc");
     for (const part of item.description)
       desc.append(
-        part.href
-          ? link(part.href, part.text)
-          : document.createTextNode(part.text),
+        part.break
+          ? el("br")
+          : part.href
+            ? link(part.href, part.text)
+            : document.createTextNode(part.text),
       );
     info.append(desc);
     const tags = el("div", "item-tags");

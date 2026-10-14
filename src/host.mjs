@@ -194,13 +194,13 @@ export function mountHost(w, host, link) {
 html[data-theme=dark] [data-user-gadgets-view] .ug-sort button.l { color:#2ea6ff; }
 [data-user-gadgets-view] .ug-sort button[aria-pressed=true],[data-user-gadgets-view] .ug-sort button:hover,[data-user-gadgets-view] .ug-sort button:focus-visible { background:var(--primary-color,#f09199);color:#fff; }
 [data-user-gadgets-view] .ug-sort button:focus-visible { outline:2px solid currentColor;outline-offset:2px; }
-[data-user-gadgets-view] .gadgetList { margin:0;padding:0;list-style:none; }
-[data-user-gadgets-view] .gadgetList li { display:flex;padding:5px 0;border-bottom:1px solid rgba(128,128,128,.2);gap:18px; }
-[data-user-gadgets-view] .gadgetList .avatar img { width:40px;height:40px;border-radius:5px; }
-[data-user-gadgets-view] .gadgetList .info { flex:1;min-width:0; }
-[data-user-gadgets-view] .desc { white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0; }
-[data-user-gadgets-view] .item-tags { display:flex;flex-wrap:wrap;gap:3px; }
-[data-user-gadgets-view] .badge_tag { padding:2px 5px;background:rgba(128,128,128,.12);border-radius:3px;color:inherit; }
+[data-user-gadgets-view] .gadgetList { box-sizing:border-box;margin:0;padding:0;list-style:none; }
+[data-user-gadgets-view] .gadgetList > li { box-sizing:border-box;margin:5px 0;padding:5px 0;position:relative;word-wrap:break-word; }
+[data-user-gadgets-view] .gadgetList > li > span.avatar { display:block;height:50px;left:0;margin:0 5px;overflow:hidden;position:absolute;width:50px; }
+[data-user-gadgets-view] .gadgetList > li > .info { display:block;font-size:14px;padding:0 5px 5px 0;margin-left:60px;border-bottom:1px dotted #e8e8e8;color:#666;min-height:35px; }
+html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border-bottom-color:#555;color:#d8d8d8; }
+[data-user-gadgets-view] .gadgetList h3 { font-size:14px;margin:0 0 3px; }
+[data-user-gadgets-view] .gadgetList .desc { display:block;overflow-wrap:anywhere;margin:5px 0; }
 @media(max-width:640px) { [data-user-gadgets-view] .ug-shell { flex-direction:column; } [data-user-gadgets-view] .ug-list,[data-user-gadgets-view] .ug-tools { width:100%; } [data-user-gadgets-view] .ug-tools { order:-1; } }`;
   const children = [...host.main.children].slice(
     0,

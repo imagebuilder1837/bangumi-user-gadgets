@@ -19,7 +19,7 @@ function description(node, origin) {
       ["SCRIPT", "STYLE", "IFRAME", "OBJECT"].includes(n.tagName)
     )
       return [];
-    if (n.tagName === "BR") return [{ text: "\n" }];
+    if (n.tagName === "BR") return [{ text: "\n", break: true }];
     if (n.tagName === "A") {
       const url = safeURL(n.getAttribute("href"), origin);
       return [{ text: n.textContent, ...(url ? { href: url.href } : {}) }];
