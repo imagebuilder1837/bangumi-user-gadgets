@@ -36,7 +36,7 @@ test("installable version agrees with the dependency lockfile", () => {
   assert.equal(lock.packages[""].version, version);
 });
 
-test("生成物在代表宿主页初始化并展示裁剪脱敏原始响应", async () => {
+test("生成物在代表宿主页初始化并展示浏览器保存页裁剪脱敏样本", async () => {
   const dom = new JSDOM(host, {
     url: "https://bgm.tv/user/alice#gadgets",
     runScripts: "outside-only",
@@ -67,5 +67,19 @@ test("生成物在代表宿主页初始化并展示裁剪脱敏原始响应", as
       .length,
     5,
   );
+  const d = dom.window.document;
+  assert.equal(d.querySelectorAll("[data-user-gadgets-item]").length, 1);
+  assert.equal(
+    d.querySelector("[data-user-gadgets-item]").dataset.userGadgetsItem,
+    "31",
+  );
+  assert.match(d.querySelector(".tip_i").textContent, /更新 2020-4-4 10:30/);
+  assert.match(d.querySelector(".tip_i").textContent, /21006 人启用/);
+  assert.deepEqual(
+    [...d.querySelectorAll(".badge_tag")].map((n) => n.textContent),
+    ["功能增强", "评分与统计", "评分", "统计", "UI"],
+  );
+  assert.equal(d.querySelector(".btnToggleGadget"), null);
+  assert.equal(d.querySelector(".featuredContainer"), null);
   dom.window.close();
 });
