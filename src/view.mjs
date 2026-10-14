@@ -237,7 +237,7 @@ export function renderView(
     info.append(tags);
     li.append(icon, info);
     nodes.set(item.id, li);
-    for (const target of [h3.querySelector("a"), desc, ...tags.children])
+    for (const target of [h3.querySelector("a"), desc])
       highlights.push(highlighter(document, target));
   }
   const empty = el("p", "tip", "没有符合当前条件的组件");
@@ -252,7 +252,9 @@ export function renderView(
       any ||= !node.hidden;
       [...node.querySelectorAll(".badge_tag")].forEach((tag, index) => {
         const selected = state.catalog.tagSelected(state.filters, item, index);
-        tag.classList.toggle("highlighted", selected);
+        const searchHit =
+          searchRanges(item.tags[index], state.filters.query).length > 0;
+        tag.classList.toggle("highlighted", selected || searchHit);
         if (state.categories)
           tag.setAttribute("aria-pressed", String(selected));
       });

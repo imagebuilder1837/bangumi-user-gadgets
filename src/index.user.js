@@ -248,8 +248,6 @@ html[data-theme=dark] [data-user-gadgets-view] .related-tags-container { border-
 [data-user-gadgets-view] .tag-checkbox.ug-disabled { opacity:.45;cursor:not-allowed;background:none;color:inherit; }
 [data-user-gadgets-view] .ug-disabled .tag-count { color:inherit; }
 [data-user-gadgets-view] .ug-reset { border:0;background:none;color:inherit;font:inherit;cursor:pointer; }
-[data-user-gadgets-view] mark { background:#ffe08a;color:#332900; }
-html[data-theme=dark] [data-user-gadgets-view] mark { background:#806000;color:#fff; }
 [data-user-gadgets-view] .ug-sort { display:flex;flex-wrap:wrap;align-items:baseline;gap:4px; }
 [data-user-gadgets-view] .ug-sort .filters { display:flex;flex-wrap:wrap;align-items:baseline;gap:2px; }
 [data-user-gadgets-view] .ug-sort-directions { margin-left:auto; }
@@ -933,7 +931,7 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       info.append(tags);
       li.append(icon, info);
       nodes.set(item.id, li);
-      for (const target of [h3.querySelector("a"), desc, ...tags.children])
+      for (const target of [h3.querySelector("a"), desc])
         highlights.push(highlighter(document, target));
     }
     const empty = el("p", "tip", "没有符合当前条件的组件");
@@ -952,7 +950,9 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
             item,
             index,
           );
-          tag.classList.toggle("highlighted", selected);
+          const searchHit =
+            searchRanges(item.tags[index], state.filters.query).length > 0;
+          tag.classList.toggle("highlighted", selected || searchHit);
           if (state.categories)
             tag.setAttribute("aria-pressed", String(selected));
         });

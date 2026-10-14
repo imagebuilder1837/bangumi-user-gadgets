@@ -95,7 +95,13 @@ test("搜索跨字段 AND、字面词与安全重叠高亮，保留节点和链�
   );
   assert.equal(link.textContent, "AlphaBeta");
   assert.equal(link.querySelector("mark").textContent, "Alpha");
-  assert.ok(item.querySelector(".item-tags mark"));
+  assert.equal(item.querySelector(".item-tags mark"), null);
+  assert.deepEqual(
+    [...item.querySelectorAll(".badge_tag.highlighted")].map(
+      (n) => n.textContent,
+    ),
+    ["Alpha", "UI"],
+  );
   assert.equal(item.querySelector(".desc a"), link);
   assert.equal(item.querySelector(".tip_i"), meta);
   assert.equal(item.querySelectorAll("mark mark").length, 0);
@@ -342,10 +348,12 @@ test("复用原生搜索与标签样式，同时保持键盘可达和筛选隐�
     "none",
   );
   enter(w, d, "UI");
-  assert.ok(root(d).querySelector(".badge_tag.highlighted mark"));
+  assert.ok(root(d).querySelector(".badge_tag.highlighted"));
+  assert.equal(root(d).querySelector(".badge_tag mark"), null);
+  enter(w, d, "评分");
   for (const theme of ["light", "dark"]) {
     d.documentElement.dataset.theme = theme;
-    const mark = root(d).querySelector("mark");
+    const mark = root(d).querySelector("h3 mark");
     assert.notEqual(
       w.getComputedStyle(mark).color,
       w.getComputedStyle(mark).backgroundColor,
