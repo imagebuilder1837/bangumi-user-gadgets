@@ -1,6 +1,12 @@
 import { inspectHost, mountHost } from "./host.mjs";
 import { readGarage } from "./garage.mjs";
-import { authorItems, createSorting, sortItems } from "./model.mjs";
+import {
+  authorItems,
+  createSorting,
+  sortItems,
+  createFilters,
+  createCatalog,
+} from "./model.mjs";
 import { renderView } from "./view.mjs";
 
 const applications = new WeakMap();
@@ -20,7 +26,8 @@ export function startApp({
     generation = 0,
     stopped = false,
     entry = null,
-    errorNode = null;
+    errorNode = null,
+    disposeView = null;
   function clearError() {
     errorNode?.remove();
     errorNode = null;
@@ -68,7 +75,8 @@ export function startApp({
       window.location.hash !== "#gadgets"
     )
       return;
-    renderView(
+    disposeView?.();
+    disposeView = renderView(
       d,
       mounted.root,
       state,
@@ -83,6 +91,7 @@ export function startApp({
         if (direction) state.sorting.directions[metric] = direction;
         state.orderedItems = sortItems(state.orderedItems, state.sorting);
       },
+      timers,
     );
   }
   function load(state) {
@@ -98,6 +107,7 @@ export function startApp({
           state.items = authorItems(garage, state.user);
           state.orderedItems = sortItems(state.items, state.sorting);
           state.categories = garage.categories;
+          state.catalog = createCatalog(state.items, state.categories);
           state.status = "success";
         },
         (error) => {
@@ -129,6 +139,7 @@ export function startApp({
         items: [],
         orderedItems: [],
         sorting: createSorting(),
+        filters: createFilters(),
       };
       sessions.set(host.user, state);
     }
@@ -137,6 +148,8 @@ export function startApp({
     else publish(state);
   }
   function exit() {
+    disposeView?.();
+    disposeView = null;
     mounted?.hide();
     mounted = current = null;
     clearError();

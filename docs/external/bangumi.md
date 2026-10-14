@@ -46,7 +46,9 @@
 - 保存的 bgm.tv 格纳库卡片使用 `#timeline` 的祖先规则：图标槽绝对定位，信息区左缩进 60px、字号 14px，底部为点线（浅色 `#e8e8e8`，深色 `#555`），简介随信息区颜色。个人页不能复制该 ID，需在自有根内桥接这些规则。`img.avatar`、`.item-tags`、`span.badge_tag` 已有全局样式，不应再覆盖图标圆角或添加方形灰底标签；日期／人数的灰字依赖 `span.tip_j`。简介普通源码空白按 HTML 自然折叠，显式 `<br>` 才表示换行，不能用 `pre-wrap` 把原稿空行放大。
 - 保存的 bgm.tv 收藏页配套 CSS 同时提供 `#browserTools` 与 `.browserTools` 的边框、内边距及浅深主题规则；排序栏可直接复用 `.browserTools`，不复制隐藏宿主 ID。其 `.filters` 的圆角、选中和 hover 规则只匹配 `a`，语义 button 仍需自有根内的最小适配；左右布局与键盘焦点也需补齐。收藏列专属 ID 规则不能直接套用到格纳库列。
 - `a.chiiBtn` 等规则带元素类型约束，给 button 同名 class 不保证等价；嵌套灰字链接还可能被更具体的字号／颜色规则覆盖。
-- 原站暗色通过 `html[data-theme=dark]` 等规则覆盖；动态分类样式存在固定深色文字缺口，需要人工核对实际级联。
+- 保存页的搜索框 `.searchBar .inner`／`input.textfield`、分类胶囊 `.tag-checkbox`／`.selected`／`.tag-count` 和卡片 `.badge_tag.highlighted` 是全局规则，可直接复用；主子层级与关联区的布局来自页面内联 CSS，需在自有根内补齐。不要复制内联分类标题的固定深色文字。
+- 原站 `.tag-checkbox input[type=checkbox/radio]` 使用 `display:none`，直接复用会丢失键盘焦点；本组件在自有根内改用视觉裁剪，并补焦点轮廓。禁用标签还须覆盖原生 hover，固定频数不能作为可用性样式。
+- 原站暗色通过 `html[data-theme=dark]` 等规则覆盖；搜索标记需有独立浅深配色以免与标签选中色混淆。以上为 `/tmp` 保存页及配套 CSS 的静态核对，不代表真实浏览器的视觉、Tab／方向键或输入法验收。
 - 含 display:flex 的作者样式可能压过 hidden 属性。非 mainXL 宿主页还可能保留祖先 1000px 最小宽度，仅改变自有根不足以获得相同响应式效果。
 - CSS 片段脱离 media 层级会误导级联判断，jsdom 不能验证宽度、布局和实际焦点。仅因静态 selector 存在不能宣称视觉一致。
 

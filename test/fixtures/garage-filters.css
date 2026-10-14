@@ -1,0 +1,13 @@
+/* Relevant global rules from the saved bgm.tv garage stylesheet.
+   The application must bridge keyboard visibility and hidden flex elements. */
+.tag-checkbox { display:flex;align-items:center;padding:4px 10px;border-radius:15px;cursor:pointer;border:1px solid #eee; }
+html[data-theme=dark] .tag-checkbox { border:1px solid #444; }
+.tag-checkbox input[type=checkbox],.tag-checkbox input[type=radio] { display:none; }
+.tag-checkbox .tag-count { margin-left:5px;font-size:12px;color:#ccc; }
+.tag-checkbox.selected { background:var(--primary-color,#f09199);color:#fff;border-color:var(--primary-color,#f09199); }
+.tag-checkbox.selected .tag-count { color:#fff; }
+.searchBar { position:relative;border:1px solid #ddd;border-radius:100px; }
+.searchBar .inner { display:flex;align-items:center;width:100%;box-sizing:border-box;padding:3px 8px 3px 5px; }
+.searchBar input.textfield { width:100%;padding:0 5px;background:transparent;line-height:20px;border:none; }
+.item-tags { display:flex;flex-wrap:wrap;gap:4px; }
+span.badge_tag.highlighted { background:#369cf8!important;color:#fff!important; }

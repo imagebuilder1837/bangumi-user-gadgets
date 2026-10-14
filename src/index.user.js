@@ -225,6 +225,23 @@
 [data-user-gadgets-view] .ug-shell { display:flex;gap:15px; }
 [data-user-gadgets-view] .ug-list { width:700px;min-width:0; }
 [data-user-gadgets-view] .ug-tools { width:280px;flex-shrink:0; }
+[data-user-gadgets-view] [hidden] { display:none!important; }
+[data-user-gadgets-view] .ug-search { margin-bottom:15px; }
+[data-user-gadgets-view] .main-category { margin-bottom:10px; }
+[data-user-gadgets-view] .main-category > .tag-checkbox { margin:5px;font-size:14px;font-weight:bold; }
+[data-user-gadgets-view] .sub-categories,[data-user-gadgets-view] .related-tags-wrapper { display:flex;flex-wrap:wrap;gap:3px; }
+[data-user-gadgets-view] .sub-categories { margin:0 5px; }
+[data-user-gadgets-view] .related-tags-container { margin:5px 0 0 5px;padding-left:5px;border-left:2px solid #e0e0e0; }
+html[data-theme=dark] [data-user-gadgets-view] .related-tags-container { border-color:#444; }
+[data-user-gadgets-view] .related-tags-title { margin-bottom:5px;font-size:12px; }
+[data-user-gadgets-view] .tag-checkbox { position:relative; }
+[data-user-gadgets-view] .tag-checkbox input[type=radio],[data-user-gadgets-view] .tag-checkbox input[type=checkbox] { display:block;position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%); }
+[data-user-gadgets-view] .tag-checkbox:focus-within,[data-user-gadgets-view] .badge_tag:focus-visible { outline:2px solid var(--primary-color,#f09199);outline-offset:2px; }
+[data-user-gadgets-view] .tag-checkbox.ug-disabled { opacity:.45;cursor:not-allowed;background:none;color:inherit; }
+[data-user-gadgets-view] .ug-disabled .tag-count { color:inherit; }
+[data-user-gadgets-view] .ug-reset { border:0;background:none;color:inherit;font:inherit;cursor:pointer; }
+[data-user-gadgets-view] mark { background:#ffe08a;color:#332900; }
+html[data-theme=dark] [data-user-gadgets-view] mark { background:#806000;color:#fff; }
 [data-user-gadgets-view] .ug-sort { display:flex;flex-wrap:wrap;align-items:baseline;gap:4px; }
 [data-user-gadgets-view] .ug-sort .filters { display:flex;flex-wrap:wrap;align-items:baseline;gap:2px; }
 [data-user-gadgets-view] .ug-sort-directions { margin-left:auto; }
@@ -507,6 +524,155 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
     return garage.items.filter((item) => item.author === user);
   }
 
+  function createFilters() {
+    return { query: "", category: null, tags: [] };
+  }
+
+  function fold(text) {
+    return text.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+  }
+
+  function searchTerms(query) {
+    return fold(query).split(/\s+/u).filter(Boolean);
+  }
+
+  function searchRanges(text, query) {
+    const source = fold(text),
+      ranges = [];
+    for (const term of searchTerms(query)) {
+      let start = source.indexOf(term);
+      while (start !== -1) {
+        ranges.push([start, start + term.length]);
+        start = source.indexOf(term, start + 1);
+      }
+    }
+    ranges.sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for (const range of ranges) {
+      const last = merged.at(-1);
+      if (last && range[0] <= last[1]) last[1] = Math.max(last[1], range[1]);
+      else merged.push([...range]);
+    }
+    return merged;
+  }
+
+  function createCatalog(items, configuration) {
+    const key = (main, sub = null) => JSON.stringify([main, sub]);
+    const roles = new Map();
+    for (const item of items) {
+      const main = configuration?.find((c) => c.name === item.tags[0]);
+      const sub = main?.subCategories.includes(item.tags[1])
+        ? item.tags[1]
+        : null;
+      const consumed = main ? (sub ? 2 : 1) : 0;
+      roles.set(item.id, {
+        main: key(main?.name ?? null),
+        sub: sub ? key(main.name, sub) : null,
+        consumed,
+        tags: [...new Set(item.tags.slice(consumed))],
+      });
+    }
+    function inCategory(item, category) {
+      const role = roles.get(item.id);
+      return (
+        category === null || role.main === category || role.sub === category
+      );
+    }
+    function matches(item, filters) {
+      const fields = [
+        item.title,
+        item.description.map((p) => p.text).join(""),
+        ...item.tags,
+      ].map(fold);
+      return (
+        inCategory(item, filters.category) &&
+        filters.tags.every((tag) => roles.get(item.id).tags.includes(tag)) &&
+        searchTerms(filters.query).every((term) =>
+          fields.some((field) => field.includes(term)),
+        )
+      );
+    }
+    const categories = [];
+    function addCategory(main, sub = null) {
+      const category = key(main, sub);
+      const count = items.filter((item) => inCategory(item, category)).length;
+      if (count)
+        categories.push({
+          key: category,
+          label: sub ?? main ?? "未分类",
+          parent: sub ? key(main) : null,
+          count,
+        });
+    }
+    if (configuration) {
+      for (const main of configuration) {
+        addCategory(main.name);
+        for (const sub of main.subCategories) addCategory(main.name, sub);
+      }
+      addCategory(null);
+    }
+    function related(filters) {
+      if (filters.category === null || !configuration) return [];
+      const counts = new Map();
+      for (const item of items.filter((item) =>
+        inCategory(item, filters.category),
+      ))
+        for (const tag of roles.get(item.id).tags)
+          counts.set(tag, (counts.get(tag) || 0) + 1);
+      return [...counts]
+        .sort((a, b) => b[1] - a[1])
+        .map(([tag, count]) => ({
+          tag,
+          count,
+          selected: filters.tags.includes(tag),
+          disabled:
+            !filters.tags.includes(tag) &&
+            !items.some((item) =>
+              matches(item, { ...filters, tags: [...filters.tags, tag] }),
+            ),
+        }));
+    }
+    function selectCategory(filters, category) {
+      filters.category = category === filters.category ? null : category;
+      filters.tags = [];
+    }
+    function selectTag(filters, tag) {
+      filters.tags = filters.tags.includes(tag)
+        ? filters.tags.filter((t) => t !== tag)
+        : [...filters.tags, tag];
+    }
+    function cardTag(filters, item, index) {
+      if (!configuration) return;
+      const role = roles.get(item.id);
+      if (index < role.consumed)
+        selectCategory(filters, index === 0 ? role.main : role.sub);
+      else if (filters.tags.includes(item.tags[index]))
+        selectTag(filters, item.tags[index]);
+      else {
+        filters.category = role.sub || role.main;
+        filters.tags = [item.tags[index]];
+      }
+    }
+    function tagSelected(filters, item, index) {
+      const role = roles.get(item.id);
+      return (
+        !!configuration &&
+        (index < role.consumed
+          ? filters.category === (index === 0 ? role.main : role.sub)
+          : filters.tags.includes(item.tags[index]))
+      );
+    }
+    return {
+      categories,
+      matches,
+      related,
+      selectCategory,
+      selectTag,
+      cardTag,
+      tagSelected,
+    };
+  }
+
   function createSorting() {
     return {
       metric: "collects",
@@ -527,7 +693,59 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
     });
   }
 
-  function renderView(document, root, state, retry, now, changeSort) {
+  // Keep the original text nodes and safe links; only generated highlight siblings change.
+  function highlighter(document, container) {
+    const walker = document.createTreeWalker(container, 5),
+      parts = [];
+    let text = "",
+      node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeType === 3) {
+        parts.push({
+          node,
+          text: node.textContent,
+          start: text.length,
+          extras: [],
+        });
+        text += node.textContent;
+      } else if (node.tagName === "BR") text += "\n";
+    }
+    let previous = null;
+    return (query) => {
+      if (query === previous) return;
+      previous = query;
+      const ranges = searchRanges(text, query);
+      for (const part of parts) {
+        for (const extra of part.extras) extra.remove();
+        part.extras = [];
+        const local = ranges
+          .map(([a, b]) => [
+            Math.max(a, part.start) - part.start,
+            Math.min(b, part.start + part.text.length) - part.start,
+          ])
+          .filter(([a, b]) => a < b);
+        if (!local.length) {
+          part.node.textContent = part.text;
+          continue;
+        }
+        part.node.textContent = part.text.slice(0, local[0][0]);
+        let end = local[0][0];
+        for (const [a, b] of local) {
+          if (a > end)
+            part.extras.push(document.createTextNode(part.text.slice(end, a)));
+          const mark = document.createElement("mark");
+          mark.textContent = part.text.slice(a, b);
+          part.extras.push(mark);
+          end = b;
+        }
+        if (end < part.text.length)
+          part.extras.push(document.createTextNode(part.text.slice(end)));
+        part.node.after(...part.extras);
+      }
+    };
+  }
+
+  function renderView(document, root, state, retry, now, changeSort, timers) {
     root.replaceChildren();
     const el = (tag, cls, text) => {
       const n = document.createElement(tag);
@@ -568,7 +786,8 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       ul = el("ul", "gadgetList list_all text"),
       nodes = new Map(),
       metricButtons = new Map(),
-      directionButtons = new Map();
+      directionButtons = new Map(),
+      highlights = [];
     bar.setAttribute("aria-label", "组件排序");
     metrics.append(el("span", null, "按"));
     function sortButton(container, label, select) {
@@ -684,12 +903,207 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
         info.append(p);
       }
       const tags = el("div", "item-tags");
-      item.tags.forEach((tag) => tags.append(el("span", "badge_tag", tag)));
+      item.tags.forEach((tag, index) => {
+        const badge = el("span", "badge_tag", tag);
+        if (state.categories) {
+          badge.setAttribute("role", "button");
+          badge.tabIndex = 0;
+          const select = () => {
+            state.catalog.cardTag(state.filters, item, index);
+            updateFilters();
+          };
+          badge.addEventListener("click", select);
+          badge.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              select();
+            }
+          });
+        }
+        tags.append(badge);
+      });
       info.append(tags);
       li.append(icon, info);
       nodes.set(item.id, li);
+      for (const target of [h3.querySelector("a"), desc, ...tags.children])
+        highlights.push(highlighter(document, target));
+    }
+    const empty = el("p", "tip", "没有符合当前条件的组件");
+    empty.setAttribute("role", "status");
+    list.append(empty);
+    const controls = renderFilters(el, tools, state, timers, updateFilters);
+    function updateFilters() {
+      let any = false;
+      for (const item of state.items) {
+        const node = nodes.get(item.id);
+        node.hidden = !state.catalog.matches(item, state.filters);
+        any ||= !node.hidden;
+        [...node.querySelectorAll(".badge_tag")].forEach((tag, index) => {
+          const selected = state.catalog.tagSelected(
+            state.filters,
+            item,
+            index,
+          );
+          tag.classList.toggle("highlighted", selected);
+          if (state.categories)
+            tag.setAttribute("aria-pressed", String(selected));
+        });
+      }
+      empty.hidden = any;
+      for (const highlight of highlights) highlight(state.filters.query);
+      controls.update();
     }
     updateSort();
+    updateFilters();
+    return controls.dispose;
+  }
+
+  function renderFilters(el, tools, state, timers, changed) {
+    const { catalog, filters } = state;
+    const searchBox = el("div", "sideInner ug-search"),
+      searchBar = el("div", "searchBar"),
+      inner = el("div", "inner"),
+      input = el("input", "textfield");
+    input.type = "text";
+    input.setAttribute("aria-label", "搜索组件");
+    input.placeholder = "输入关键词 (标题 / 描述 / 标签)";
+    input.value = filters.query;
+    searchBox.append(el("h2", "subtitle", "搜索组件"), searchBar);
+    searchBar.append(inner);
+    inner.append(input);
+    tools.append(searchBox);
+    let pending = null,
+      composing = false;
+    const cancel = () => {
+      timers.clearTimeout(pending);
+      pending = null;
+    };
+    const apply = () => {
+      cancel();
+      filters.query = input.value;
+      changed();
+    };
+    input.addEventListener("input", (event) => {
+      cancel();
+      if (!composing && !event.isComposing)
+        pending = timers.setTimeout(apply, 180);
+    });
+    input.addEventListener("compositionstart", () => {
+      composing = true;
+      cancel();
+    });
+    input.addEventListener("compositionend", () => {
+      composing = false;
+      cancel();
+      pending = timers.setTimeout(apply, 180);
+    });
+    input.addEventListener("keydown", (event) => {
+      if (composing || event.isComposing || event.keyCode === 229) return;
+      if (event.key === "Enter") {
+        event.preventDefault();
+        apply();
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        input.value = "";
+        apply();
+      }
+    });
+    const section = el("div", "sideInner ug-filter"),
+      heading = el("h2", "subtitle", "组件筛选");
+    section.append(heading);
+    tools.append(section);
+    if (!state.categories) {
+      section.append(el("p", "tip", "分类配置暂不可用"));
+      return { update() {}, dispose: cancel };
+    }
+    const reset = el("button", "ug-reset rr l", "重置");
+    reset.type = "button";
+    heading.append(reset);
+    reset.addEventListener("click", () => {
+      filters.category = null;
+      filters.tags = [];
+      changed();
+    });
+    const categoryInputs = new Map(),
+      relatedInputs = new Map(),
+      groups = new Map(),
+      related = el("div", "related-tags-container"),
+      relatedTags = el("div", "related-tags-wrapper");
+    related.append(el("h3", "related-tags-title", "关联标签"), relatedTags);
+    function option(container, name, count, type, select) {
+      const label = el("label", "tag-checkbox"),
+        control = el("input");
+      control.type = type;
+      if (type === "radio") control.name = "user-gadgets-category";
+      label.append(
+        control,
+        el("span", "ug-option-name", name),
+        el("span", "tag-count", count),
+      );
+      control.addEventListener("click", select);
+      container.append(label);
+      return control;
+    }
+    for (const category of catalog.categories) {
+      let container;
+      if (category.parent) container = groups.get(category.parent);
+      else {
+        const group = el("div", "main-category");
+        section.append(group);
+        container = group;
+        const children = el("div", "sub-categories");
+        groups.set(category.key, children);
+        group.append(children);
+      }
+      const control = option(
+        container,
+        category.label,
+        category.count,
+        "radio",
+        () => {
+          catalog.selectCategory(filters, category.key);
+          changed();
+        },
+      );
+      if (!category.parent) container.prepend(control.parentElement);
+      categoryInputs.set(category.key, control);
+    }
+    section.append(related);
+    function update() {
+      reset.hidden = filters.category === null;
+      for (const [key, control] of categoryInputs) {
+        control.checked = filters.category === key;
+        control.parentElement.classList.toggle("selected", control.checked);
+      }
+      related.hidden = filters.category === null;
+      const options = catalog.related(filters);
+      if (
+        JSON.stringify([...relatedInputs.keys()]) !==
+        JSON.stringify(options.map((o) => o.tag))
+      ) {
+        relatedTags.replaceChildren();
+        relatedInputs.clear();
+        for (const { tag, count } of options)
+          relatedInputs.set(
+            tag,
+            option(relatedTags, tag, count, "checkbox", () => {
+              catalog.selectTag(filters, tag);
+              changed();
+            }),
+          );
+      }
+      for (const { tag, count, selected, disabled } of options) {
+        const control = relatedInputs.get(tag);
+        control.parentElement.querySelector(".tag-count").textContent = count;
+        control.checked = selected;
+        control.disabled = disabled;
+        control.parentElement.classList.toggle("selected", selected);
+        control.parentElement.classList.toggle("ug-disabled", disabled);
+      }
+    }
+    return { update, dispose: cancel };
   }
 
   const applications = new WeakMap();
@@ -709,7 +1123,8 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       generation = 0,
       stopped = false,
       entry = null,
-      errorNode = null;
+      errorNode = null,
+      disposeView = null;
     function clearError() {
       errorNode?.remove();
       errorNode = null;
@@ -757,7 +1172,8 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
         window.location.hash !== "#gadgets"
       )
         return;
-      renderView(
+      disposeView?.();
+      disposeView = renderView(
         d,
         mounted.root,
         state,
@@ -772,6 +1188,7 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
           if (direction) state.sorting.directions[metric] = direction;
           state.orderedItems = sortItems(state.orderedItems, state.sorting);
         },
+        timers,
       );
     }
     function load(state) {
@@ -787,6 +1204,7 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
             state.items = authorItems(garage, state.user);
             state.orderedItems = sortItems(state.items, state.sorting);
             state.categories = garage.categories;
+            state.catalog = createCatalog(state.items, state.categories);
             state.status = "success";
           },
           (error) => {
@@ -818,6 +1236,7 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
           items: [],
           orderedItems: [],
           sorting: createSorting(),
+          filters: createFilters(),
         };
         sessions.set(host.user, state);
       }
@@ -826,6 +1245,8 @@ html[data-theme=dark] [data-user-gadgets-view] .gadgetList > li > .info { border
       else publish(state);
     }
     function exit() {
+      disposeView?.();
+      disposeView = null;
       mounted?.hide();
       mounted = current = null;
       clearError();

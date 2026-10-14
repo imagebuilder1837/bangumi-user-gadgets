@@ -187,6 +187,23 @@ export function mountHost(w, host, link) {
 [data-user-gadgets-view] .ug-shell { display:flex;gap:15px; }
 [data-user-gadgets-view] .ug-list { width:700px;min-width:0; }
 [data-user-gadgets-view] .ug-tools { width:280px;flex-shrink:0; }
+[data-user-gadgets-view] [hidden] { display:none!important; }
+[data-user-gadgets-view] .ug-search { margin-bottom:15px; }
+[data-user-gadgets-view] .main-category { margin-bottom:10px; }
+[data-user-gadgets-view] .main-category > .tag-checkbox { margin:5px;font-size:14px;font-weight:bold; }
+[data-user-gadgets-view] .sub-categories,[data-user-gadgets-view] .related-tags-wrapper { display:flex;flex-wrap:wrap;gap:3px; }
+[data-user-gadgets-view] .sub-categories { margin:0 5px; }
+[data-user-gadgets-view] .related-tags-container { margin:5px 0 0 5px;padding-left:5px;border-left:2px solid #e0e0e0; }
+html[data-theme=dark] [data-user-gadgets-view] .related-tags-container { border-color:#444; }
+[data-user-gadgets-view] .related-tags-title { margin-bottom:5px;font-size:12px; }
+[data-user-gadgets-view] .tag-checkbox { position:relative; }
+[data-user-gadgets-view] .tag-checkbox input[type=radio],[data-user-gadgets-view] .tag-checkbox input[type=checkbox] { display:block;position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%); }
+[data-user-gadgets-view] .tag-checkbox:focus-within,[data-user-gadgets-view] .badge_tag:focus-visible { outline:2px solid var(--primary-color,#f09199);outline-offset:2px; }
+[data-user-gadgets-view] .tag-checkbox.ug-disabled { opacity:.45;cursor:not-allowed;background:none;color:inherit; }
+[data-user-gadgets-view] .ug-disabled .tag-count { color:inherit; }
+[data-user-gadgets-view] .ug-reset { border:0;background:none;color:inherit;font:inherit;cursor:pointer; }
+[data-user-gadgets-view] mark { background:#ffe08a;color:#332900; }
+html[data-theme=dark] [data-user-gadgets-view] mark { background:#806000;color:#fff; }
 [data-user-gadgets-view] .ug-sort { display:flex;flex-wrap:wrap;align-items:baseline;gap:4px; }
 [data-user-gadgets-view] .ug-sort .filters { display:flex;flex-wrap:wrap;align-items:baseline;gap:2px; }
 [data-user-gadgets-view] .ug-sort-directions { margin-left:auto; }
