@@ -4,7 +4,7 @@
 
 规格描述目标行为，不代表所有切片已实现或通过验收。
 
-- 术语：[CONTEXT.md](../CONTEXT.md)
+- 术语：[GLOSSARY.md](../GLOSSARY.md)
 - 维护边界：[module-guide.md](module-guide.md)
 - 环境观察与尚未核实的协议：[external/bangumi.md](external/bangumi.md)
 - 工程、测试及交付授权：[development.md](development.md)
